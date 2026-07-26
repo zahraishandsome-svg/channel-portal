@@ -97,15 +97,19 @@ for repo in repos:
         try:
             con = sqlite3.connect(tmp)
             rows = con.execute(
-                "SELECT channel_id, youtube_video_id FROM posted_videos "
+                "SELECT channel_id, youtube_video_id, posted_at FROM posted_videos "
                 "WHERE status='uploaded' AND youtube_video_id IS NOT NULL "
                 "ORDER BY posted_at DESC").fetchall()
             con.close()
         except Exception:
             continue
-        for cid, vid in rows:
-            if cid in wanted and cid not in found:
-                found[cid] = {"tiktok": wanted[cid], "video": vid}
+        # a repo can hold several databases (old + current); keep the newest upload
+        for cid, vid, at in rows:
+            if cid not in wanted:
+                continue
+            prev = found.get(cid)
+            if prev is None or (at or "") > prev["at"]:
+                found[cid] = {"tiktok": wanted[cid], "video": vid, "at": at or ""}
 
 print("channels with an upload to identify them:", sorted(found))
 
@@ -121,14 +125,30 @@ for i in range(0, len(vids), 50):
     except Exception as e:
         print("  videos.list failed:", e)
 
+# previously published list: a channel whose videos have vanished (terminated) can
+# still be identified from it, so it stays on the dashboard with the right badge
+prev_ids = {}
+try:
+    env = json.loads(Path("channels.enc").read_text(encoding="utf-8"))
+    key0 = base64.urlsafe_b64decode(ENC_KEY + "=" * (-len(ENC_KEY) % 4))
+    plain = AESGCM(key0).decrypt(base64.b64decode(env["nonce"]),
+                                 base64.b64decode(env["data"]), None)
+    prev_ids = {c["label"]: c["id"] for c in json.loads(plain)["channels"]}
+except Exception:
+    pass
+
 for label, info in sorted(found.items(), key=lambda kv: int(re.sub(r"\D", "", kv[0]) or 0)):
+    short = label.replace("channel_", "ch")
     s = snip.get(info["video"])
-    if not s:
-        print(f"  {label}: could not resolve (video {info['video']} unavailable)")
+    if s:
+        cid = s["channelId"]
+    elif short in prev_ids:
+        cid = prev_ids[short]
+        print(f"  {short}: video gone, reusing the known channel id")
+    else:
+        print(f"  {short}: could not resolve (video {info['video']} unavailable)")
         continue
-    channels.append({"label": label.replace("channel_", "ch"),
-                     "id": s["channelId"],
-                     "tiktok": info["tiktok"]})
+    channels.append({"label": short, "id": cid, "tiktok": info["tiktok"]})
 print("resolved:", [c["label"] for c in channels])
 if not channels:
     raise SystemExit("resolved no channels — refusing to publish an empty list")
