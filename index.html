@@ -1,0 +1,1233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Channels — Analytics</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#08090c">
+<link rel="icon" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Channels">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root{
+  --bg:#08090c; --surface:#0f1116; --raised:#14171d; --raised2:#191d24;
+  --line:#1d212a; --line2:#282d38; --line3:#343a47;
+  --fg:#eef1f6; --muted:#8b929e; --faint:#5d6470;
+  --accent:#4d8dff; --accent-soft:rgba(77,141,255,.13); --accent-line:rgba(77,141,255,.35);
+  --green:#3ecf8e; --green-soft:rgba(62,207,142,.12);
+  --amber:#f2b544; --amber-soft:rgba(242,181,68,.12);
+  --red:#f2545b; --red-soft:rgba(242,84,91,.12);
+  --violet:#a78bfa;
+  --sb:264px; --radius:14px;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scrollbar-color:#2a303b var(--bg)}
+body{margin:0;background:var(--bg);color:var(--fg);overflow-x:hidden;
+  font:400 13.5px/1.55 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+::selection{background:var(--accent-soft)}
+a{color:inherit;text-decoration:none}
+button,input{font-family:inherit}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes pop{from{opacity:0;transform:scale(.96) translateY(6px)}to{opacity:1;transform:none}}
+@keyframes slideL{from{transform:translateX(-100%)}to{transform:none}}
+@keyframes breathe{50%{opacity:.4}}
+@keyframes shimmer{100%{background-position:-200% 0}}
+@keyframes drawIn{from{stroke-dashoffset:1200}to{stroke-dashoffset:0}}
+@keyframes riseBar{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ══ shell ══ */
+.shell{display:flex;min-height:100vh}
+.sb{width:var(--sb);flex-shrink:0;background:var(--surface);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;z-index:50}
+.sb-head{padding:18px 18px 14px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px}
+.mark{width:30px;height:30px;border-radius:9px;flex-shrink:0;display:grid;place-items:center;
+  background:linear-gradient(140deg,#4d8dff,#8b5cf6);box-shadow:0 3px 12px -4px rgba(77,141,255,.7)}
+.mark svg{width:15px;height:15px;fill:#fff}
+.brand h1{margin:0;font-size:14.5px;font-weight:620;letter-spacing:-.2px}
+.brand .sub{font-size:11px;color:var(--faint);margin-top:-1px}
+.sb-scroll{flex:1;overflow-y:auto;padding:12px 10px}
+.sb-lbl{font-size:10px;font-weight:680;letter-spacing:.9px;text-transform:uppercase;color:var(--faint);
+  padding:10px 8px 6px}
+.nav{display:flex;align-items:center;gap:10px;padding:8px 9px;border-radius:10px;cursor:pointer;
+  color:var(--muted);transition:background .14s,color .14s;position:relative;margin-bottom:2px}
+.nav:hover{background:var(--raised);color:var(--fg)}
+.nav.on{background:var(--accent-soft);color:#cfe0ff}
+.nav.on::before{content:"";position:absolute;left:-10px;top:50%;transform:translateY(-50%);
+  width:3px;height:17px;border-radius:0 3px 3px 0;background:var(--accent)}
+.nav .ic{width:17px;height:17px;flex-shrink:0;opacity:.9}
+.nav .nm{flex:1;font-size:13px;font-weight:520;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.av{width:24px;height:24px;border-radius:50%;flex-shrink:0;object-fit:cover;background:var(--raised2);
+  border:1px solid var(--line2)}
+.nav .mini{font-size:10.5px;color:var(--faint);font-variant-numeric:tabular-nums;flex-shrink:0}
+.pip{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.pip.g{background:var(--green)} .pip.a{background:var(--amber)} .pip.r{background:var(--red)}
+.sb-foot{padding:11px 12px;border-top:1px solid var(--line);display:flex;align-items:center;gap:8px;
+  font-size:11px;color:var(--faint)}
+.scrim2{display:none}
+
+.main{flex:1;margin-left:var(--sb);min-width:0;display:flex;flex-direction:column}
+.tbar{position:sticky;top:0;z-index:40;padding-top:max(12px,env(safe-area-inset-top));display:flex;align-items:center;gap:10px;padding:12px 24px;
+  background:rgba(8,9,12,.82);backdrop-filter:blur(14px) saturate(1.4);border-bottom:1px solid transparent;
+  transition:border-color .2s}
+.tbar.stuck{border-bottom-color:var(--line)}
+.crumb{font-size:14px;font-weight:600;letter-spacing:-.2px;display:flex;align-items:center;gap:8px;min-width:0}
+.crumb .dim{color:var(--faint);font-weight:400}
+.grow{flex:1}
+.hamb{display:none}
+
+.btn{display:inline-flex;align-items:center;gap:7px;background:var(--raised);color:var(--fg);
+  border:1px solid var(--line2);border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:530;
+  cursor:pointer;transition:background .14s,border-color .14s,transform .1s;white-space:nowrap}
+.btn:hover:not(:disabled){background:var(--raised2);border-color:var(--line3)}
+.btn:active:not(:disabled){transform:scale(.975)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.pri{background:var(--accent);border-color:#5f9aff;color:#fff;box-shadow:0 2px 10px -4px rgba(77,141,255,.8)}
+.btn.pri:hover:not(:disabled){background:#5f9aff}
+.btn svg{width:14px;height:14px}
+.kbd{font:11px ui-monospace,monospace;background:var(--raised2);border:1px solid var(--line2);
+  border-radius:5px;padding:1px 5px;color:var(--faint)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);
+  background:var(--raised);border:1px solid var(--line);border-radius:20px;padding:4px 11px;white-space:nowrap}
+.beat{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px var(--green-soft)}
+.beat.busy{background:var(--amber);box-shadow:0 0 0 3px var(--amber-soft);animation:breathe 1.1s ease-in-out infinite}
+.beat.err{background:var(--red);box-shadow:0 0 0 3px var(--red-soft)}
+
+.page{padding:22px 24px calc(80px + env(safe-area-inset-bottom));max-width:1400px;width:100%}
+.h{font-size:11px;font-weight:670;letter-spacing:1px;text-transform:uppercase;color:var(--faint);
+  margin:30px 0 13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.h .n{text-transform:none;letter-spacing:0;font-weight:400;font-size:12px;color:var(--faint)}
+.h:first-child{margin-top:4px}
+
+/* ══ stat cards ══ */
+.stats{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(178px,1fr))}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px;
+  position:relative;overflow:hidden;animation:fadeUp .34s cubic-bezier(.2,.75,.3,1) both}
+.stat::after{content:"";position:absolute;inset:0 0 auto 0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent)}
+.stat .lb{font-size:10.5px;font-weight:640;letter-spacing:.7px;text-transform:uppercase;color:var(--faint)}
+.stat .vl{font-size:25px;font-weight:670;letter-spacing:-.8px;margin-top:6px;font-variant-numeric:tabular-nums;
+  line-height:1.1}
+.stat .ft{font-size:11.5px;color:var(--faint);margin-top:4px;display:flex;align-items:center;gap:5px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trend{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:670;border-radius:5px;padding:1px 5px}
+.trend.up{color:var(--green);background:var(--green-soft)}
+.trend.dn{color:var(--red);background:var(--red-soft)}
+.trend.fl{color:var(--faint);background:var(--raised)}
+.stat .spk{position:absolute;right:0;bottom:0;width:62%;height:38px;opacity:.5;pointer-events:none}
+
+/* ══ channel grid ══ */
+.cards{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+.ch{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px;
+  cursor:pointer;position:relative;overflow:hidden;box-shadow:var(--shadow);
+  animation:fadeUp .34s cubic-bezier(.2,.75,.3,1) both;
+  transition:border-color .16s,transform .18s,box-shadow .18s}
+.ch:hover{border-color:var(--line3);transform:translateY(-2px);box-shadow:0 2px 4px rgba(0,0,0,.4),0 14px 34px -16px rgba(0,0,0,.9)}
+.ch.off{opacity:.6;cursor:default}.ch.off:hover{transform:none}
+.ch-top{display:flex;align-items:center;gap:11px;margin-bottom:13px}
+.ch-av{width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0;
+  background:var(--raised2);border:1px solid var(--line2)}
+.ch-id{min-width:0;flex:1}
+.ch-nm{font-size:14px;font-weight:620;letter-spacing:-.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ch-hd{font-size:11px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.badge{font-size:9.5px;font-weight:720;letter-spacing:.6px;border-radius:6px;padding:2.5px 7px;flex-shrink:0}
+.b-top{background:var(--accent-soft);color:#8fbaff;border:1px solid var(--accent-line)}
+.b-new{background:var(--green-soft);color:var(--green);border:1px solid rgba(62,207,142,.3)}
+.b-low{background:var(--amber-soft);color:var(--amber);border:1px solid rgba(242,181,68,.3)}
+.b-off{background:var(--red-soft);color:var(--red);border:1px solid rgba(242,84,91,.3)}
+.mets{display:grid;grid-template-columns:1fr 1fr;gap:10px 8px}
+.met .k{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.6px;font-weight:600}
+.met .v{font-size:15px;font-weight:640;font-variant-numeric:tabular-nums;letter-spacing:-.3px;
+  display:flex;align-items:baseline;gap:5px}
+.ch-spk{margin:12px -16px -15px;height:44px;display:block;width:calc(100% + 32px)}
+.ch-foot{display:flex;align-items:center;justify-content:space-between;margin-top:12px;
+  padding-top:11px;border-top:1px solid var(--line)}
+.tiny{font-size:10.5px;font-weight:620;letter-spacing:.4px;display:inline-flex;align-items:center;gap:5px;
+  color:var(--faint)}
+
+/* ══ segmented ══ */
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:3px;gap:2px}
+.seg button{background:transparent;border:0;color:var(--muted);font-size:12.5px;font-weight:540;
+  padding:6px 13px;border-radius:8px;cursor:pointer;transition:background .16s,color .16s;white-space:nowrap}
+.seg button:hover{color:var(--fg)}
+.seg button.on{background:var(--raised2);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.35)}
+
+.srch{position:relative;display:flex;align-items:center;min-width:0}
+.srch svg{position:absolute;left:11px;width:14px;height:14px;color:var(--faint);pointer-events:none}
+input[type=search],input[type=text],input[type=password],input[type=date]{
+  background:var(--surface);border:1px solid var(--line);border-radius:10px;color:var(--fg);
+  padding:8px 12px;font-size:13px;transition:border-color .15s,box-shadow .15s;width:100%}
+input[type=search]{padding-left:32px;min-width:190px}
+input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.65)}
+
+/* ══ table ══ */
+.tbl{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden;
+  animation:fadeIn .3s both;box-shadow:var(--shadow)}
+.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{text-align:left;padding:10px 14px;font-size:10.5px;font-weight:650;letter-spacing:.6px;
+  text-transform:uppercase;color:var(--faint);background:var(--raised);white-space:nowrap;
+  border-bottom:1px solid var(--line2);cursor:pointer;user-select:none;position:sticky;top:0;z-index:2;
+  transition:color .14s}
+thead th:hover{color:var(--fg)}
+thead th.on{color:var(--accent)}
+th .ar{display:inline-block;width:0;height:0;margin-left:5px;vertical-align:middle;opacity:0;
+  border-left:3.5px solid transparent;border-right:3.5px solid transparent}
+th.on .ar{opacity:1}
+th.on.desc .ar{border-top:4.5px solid currentColor}
+th.on.asc .ar{border-bottom:4.5px solid currentColor}
+tbody td{padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:var(--raised)}
+tbody tr.hot{background:linear-gradient(90deg,var(--accent-soft),transparent 60%)}
+.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.vcell{display:flex;align-items:center;gap:11px;min-width:230px}
+.thumb{width:62px;height:35px;border-radius:6px;object-fit:cover;flex-shrink:0;background:var(--raised2);
+  border:1px solid var(--line2);transition:transform .18s}
+tbody tr:hover .thumb{transform:scale(1.05)}
+.vmeta{min-width:0}
+.vtitle{font-size:12.8px;font-weight:520;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  max-width:330px;transition:color .14s}
+tbody tr:hover .vtitle{color:var(--accent)}
+.vsub{font-size:11px;color:var(--faint);display:flex;align-items:center;gap:6px;margin-top:1px}
+.tag{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.4px;border-radius:4px;padding:1px 5px;
+  background:var(--accent-soft);color:#8fbaff}
+.chip{display:inline-block;font-size:11px;font-weight:560;color:var(--muted);background:var(--raised2);
+  border:1px solid var(--line2);border-radius:6px;padding:1.5px 7px}
+.meter{height:3px;border-radius:3px;background:var(--line2);margin-top:5px;overflow:hidden}
+.meter i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),#8b5cf6);
+  transition:width .5s cubic-bezier(.2,.75,.3,1)}
+
+/* ══ charts ══ */
+.chartbox{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;
+  box-shadow:var(--shadow);animation:fadeUp .34s both;position:relative}
+.chart{width:100%;height:210px;display:block;overflow:visible}
+.chart .gl{stroke:var(--line);stroke-width:1}
+.chart .ax{fill:var(--faint);font-size:10px}
+.chart .ln{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round;
+  stroke-dasharray:1200;animation:drawIn 1s cubic-bezier(.3,.8,.3,1) both}
+.chart .bar{fill:url(#bg1);transform-origin:bottom;animation:riseBar .5s cubic-bezier(.2,.8,.3,1) both}
+.chart .hit{fill:transparent;cursor:crosshair}
+.chart .hit:hover+.mk,.chart .mk.show{opacity:1}
+.tip{position:absolute;pointer-events:none;background:#05060a;border:1px solid var(--line3);
+  border-radius:9px;padding:7px 10px;font-size:11.5px;box-shadow:0 8px 24px -8px #000;
+  opacity:0;transition:opacity .12s;z-index:5;white-space:nowrap}
+.tip b{font-size:13px;font-variant-numeric:tabular-nums}
+.tip .tl{color:var(--faint);font-size:10.5px}
+
+/* ══ misc ══ */
+.note{color:var(--faint);font-size:11.5px;line-height:1.75;margin-top:12px}
+.note b{color:var(--muted);font-weight:600}
+.alert{border-radius:12px;padding:12px 15px;font-size:12.5px;line-height:1.6;margin-bottom:14px;
+  animation:fadeUp .26s both}
+.alert.i{background:rgba(77,141,255,.07);border:1px solid rgba(77,141,255,.24);color:#b9d3ff}
+.alert.e{background:var(--red-soft);border:1px solid rgba(242,84,91,.3);color:#ffb8bc}
+.alert b{color:#fff}
+.blank{padding:44px 20px;text-align:center;color:var(--faint);font-size:13px}
+.blank .bi{font-size:26px;opacity:.35;margin-bottom:8px}
+.sk{border-radius:var(--radius);border:1px solid var(--line);height:96px;
+  background:linear-gradient(90deg,var(--surface) 8%,var(--raised) 18%,var(--surface) 33%);
+  background-size:200% 100%;animation:shimmer 1.4s linear infinite}
+
+/* ══ modal ══ */
+.ovl{position:fixed;inset:0;background:rgba(3,5,9,.76);backdrop-filter:blur(5px);z-index:200;
+  display:flex;align-items:flex-start;justify-content:center;padding:26px 14px;overflow-y:auto;animation:fadeIn .16s both}
+.mod{background:var(--surface);border:1px solid var(--line2);border-radius:18px;max-width:660px;width:100%;
+  padding:24px 26px 24px;animation:pop .24s cubic-bezier(.2,.8,.3,1) both;margin:auto;box-shadow:0 30px 80px -30px #000}
+.mod h3{margin:0 0 5px;font-size:18px;font-weight:640;letter-spacing:-.3px}
+.mod .ld{color:var(--muted);font-size:13px;margin:0 0 18px;line-height:1.65}
+.steps{counter-reset:s;list-style:none;padding:0;margin:0 0 18px}
+.steps li{counter-increment:s;position:relative;padding:0 0 14px 34px;font-size:13px;line-height:1.62;color:#c9d1dd}
+.steps li::before{content:counter(s);position:absolute;left:0;top:1px;width:22px;height:22px;border-radius:7px;
+  background:var(--accent-soft);color:#8fbaff;font-size:11px;font-weight:720;display:grid;place-items:center;
+  border:1px solid var(--accent-line)}
+.steps b{color:#fff;font-weight:600}
+code{background:#0a0d13;border:1px solid var(--line2);border-radius:5px;padding:1.5px 6px;
+  font:11.5px ui-monospace,Menlo,Consolas,monospace;color:#8fbaff;word-break:break-all}
+.fld{margin-bottom:12px}
+.fld label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--faint);
+  font-weight:660;margin-bottom:6px}
+.cprow{display:flex;gap:8px;align-items:center;background:#0a0d13;border:1px solid var(--line2);
+  border-radius:9px;padding:9px 11px;font:11.5px ui-monospace,monospace;color:#8fbaff;word-break:break-all;margin:5px 0}
+.mrow{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:16px}
+.ok{color:var(--green)} .warn{color:var(--amber)}
+
+/* ══ palette ══ */
+.pal{position:fixed;inset:0;z-index:300;background:rgba(3,5,9,.7);backdrop-filter:blur(5px);
+  display:flex;align-items:flex-start;justify-content:center;padding:14vh 14px 0;animation:fadeIn .14s both}
+.palbox{background:var(--surface);border:1px solid var(--line3);border-radius:15px;width:100%;max-width:520px;
+  overflow:hidden;box-shadow:0 30px 80px -24px #000;animation:pop .2s cubic-bezier(.2,.8,.3,1) both}
+.palbox input{border:0;border-bottom:1px solid var(--line);border-radius:0;padding:15px 17px;font-size:14.5px;background:transparent}
+.palbox input:focus{box-shadow:none;border-color:var(--line)}
+.palist{max-height:330px;overflow-y:auto;padding:7px}
+.pitem{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;cursor:pointer}
+.pitem.sel{background:var(--accent-soft)}
+.pitem .pn{flex:1;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pitem .pm{font-size:11px;color:var(--faint)}
+
+/* ══ toast ══ */
+.toasts{position:fixed;bottom:20px;right:20px;z-index:400;display:flex;flex-direction:column;gap:9px}
+.toast{background:var(--raised);border:1px solid var(--line3);border-radius:11px;padding:11px 15px;
+  font-size:12.5px;box-shadow:0 12px 34px -12px #000;animation:fadeUp .24s both;max-width:330px}
+.toast.g{border-color:rgba(62,207,142,.35)} .toast.r{border-color:rgba(242,84,91,.4)}
+
+/* ══ responsive ══ */
+@media(max-width:1000px){
+  :root{--sb:0px}
+  .sb{transform:translateX(-100%);transition:transform .24s cubic-bezier(.3,.8,.3,1);width:270px;box-shadow:0 0 60px #000}
+  .sb.open{transform:none}
+  .scrim2.on{display:block;position:fixed;inset:0;background:rgba(3,5,9,.6);z-index:45;animation:fadeIn .18s both}
+  .main{margin-left:0}
+  .hamb{display:inline-flex}
+  .page{padding:18px 15px 80px}
+  .tbar{padding:11px 15px}
+}
+@media(max-width:640px){
+  .stats{grid-template-columns:repeat(2,1fr);gap:9px}
+  .stat{padding:12px 13px}.stat .vl{font-size:20px}.stat .spk{display:none}
+  .cards{grid-template-columns:1fr}
+  .crumb{font-size:13px}
+  .thumb{width:52px;height:30px}
+  .vtitle{max-width:150px}
+  .mod{padding:19px 17px;border-radius:15px}
+  .chart{height:170px}
+  .seg button{padding:6px 10px;font-size:12px}
+}
+@media(max-width:400px){.stats{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sb" id="sb">
+    <div class="sb-head">
+      <div class="brand">
+        <div class="mark"><svg viewBox="0 0 24 24"><path d="M10 16.5v-9l6 4.5-6 4.5zM12 2a10 10 0 100 20 10 10 0 000-20z"/></svg></div>
+        <div><h1>Channels</h1><div class="sub" id="sbSub">analytics</div></div>
+      </div>
+    </div>
+    <div class="sb-scroll" id="sbScroll"></div>
+    <div class="sb-foot"><span class="beat" id="beat"></span><span id="beatTxt">idle</span></div>
+  </aside>
+  <div class="scrim2" id="scrim2"></div>
+
+  <div class="main">
+    <div class="tbar" id="tbar">
+      <button class="btn hamb" id="hamb" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <div class="crumb" id="crumb">Overview</div>
+      <span class="grow"></span>
+      <button class="btn" id="cmd" title="Ctrl+K">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+        <span class="kbd">Ctrl K</span></button>
+      <button class="btn" id="setup">API</button>
+      <button class="btn pri" id="refresh">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 11-3-6.7M21 3v6h-6"/></svg>
+        Refresh</button>
+    </div>
+    <div class="page" id="page"></div>
+  </div>
+</div>
+<div id="modalHost"></div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+const KEY_STORE="yt_dash_apikey";
+const DEFAULT_KEY="";
+const apiKey=()=>localStorage.getItem(KEY_STORE)||DEFAULT_KEY;
+
+let CHANNELS=[];
+const CFG_KEY="yt_portal_config";
+
+/** Config never ships inside this file. It is pasted in once per device — either by
+    opening a setup link (#setup=<base64 json>) or through the setup screen — and then
+    lives in this browser's localStorage only. */
+function loadConfig(){
+  const m=location.hash.match(/setup=([A-Za-z0-9+/=_-]+)/);
+  if(m){
+    try{
+      const json=decodeURIComponent(escape(atob(m[1].replace(/-/g,"+").replace(/_/g,"/"))));
+      const cfg=JSON.parse(json);
+      if(Array.isArray(cfg.channels)&&cfg.channels.length){
+        localStorage.setItem(CFG_KEY,JSON.stringify(cfg));
+        if(cfg.apiKey) localStorage.setItem(KEY_STORE,cfg.apiKey);
+        history.replaceState(null,"",location.pathname);
+      }
+    }catch(e){ console.warn("bad setup link",e); }
+  }
+  try{
+    const cfg=JSON.parse(localStorage.getItem(CFG_KEY)||"null");
+    if(cfg&&Array.isArray(cfg.channels)) CHANNELS=cfg.channels;
+  }catch{}
+  return CHANNELS.length>0;
+}
+const PER_CHANNEL=10, DEEP_MAX=250, LOW_VIEWS=150;
+const HIST_KEY="yt_dash_history_v2", HIST_DAYS=120;
+const RANGES=[["1","24h"],["3","3d"],["7","7d"],["30","30d"],["90","3mo"],["all","All"],["custom","Custom"]];
+/* Three ways this page runs:
+     local  — the desktop app on :8756 (has /status /link /analytics /probe)
+     hosted — deployed to Vercel (has /api/probe; signs in through Google in-browser)
+     file   — opened straight off disk; public stats only */
+const MODE = location.port==="8756" ? "local"
+           : location.protocol.startsWith("http") ? "hosted" : "file";
+const SERVED = MODE!=="file";
+
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const cmpv=(a,b)=>a<b?-1:a>b?1:0;
+const chunk=(a,n)=>Array.from({length:Math.ceil(a.length/n)},(_,i)=>a.slice(i*n,i*n+n));
+const dayKey=d=>new Date(d).toISOString().slice(0,10);
+const nf=n=>(n===null||n===undefined||n==="")?"—":(+n).toLocaleString("en-US");
+function kf(n){ if(n===null||n===undefined) return "—"; n=+n;
+  if(Math.abs(n)>=1e9) return (n/1e9).toFixed(n%1e9?1:0)+"B";
+  if(Math.abs(n)>=1e6) return (n/1e6).toFixed(Math.abs(n)<1e7?1:0)+"M";
+  if(Math.abs(n)>=1e4) return (n/1e3).toFixed(0)+"K";
+  if(Math.abs(n)>=1e3) return (n/1e3).toFixed(1)+"K";
+  return String(Math.round(n)); }
+function ago(iso){const m=(Date.now()-new Date(iso))/6e4,h=m/60,d=h/24;
+  if(m<60)return Math.max(1,Math.round(m))+"m";
+  if(h<24)return Math.round(h)+"h";
+  if(d<30)return Math.round(d)+"d";
+  return new Date(iso).toLocaleDateString("en-GB",{day:"numeric",month:"short"});}
+const ageD=iso=>(Date.now()-new Date(iso))/864e5;
+
+function toast(msg,kind=""){const el=document.createElement("div");el.className="toast "+kind;el.innerHTML=msg;
+  $("#toasts").append(el);setTimeout(()=>{el.style.opacity="0";el.style.transition="opacity .3s";
+  setTimeout(()=>el.remove(),320);},3400);}
+
+/* history */
+const readHist=()=>{try{const h=JSON.parse(localStorage.getItem(HIST_KEY));return h?.days?h:{days:{}};}catch{return{days:{}}}};
+function writeHist(st){const h=readHist();
+  h.days[dayKey(Date.now())]={at:new Date().toISOString(),
+    channels:Object.fromEntries(st.channels.filter(c=>!c.dead).map(c=>[c.label,{subs:c.subs,views:c.views}])),
+    videos:Object.fromEntries(st.videos.filter(v=>v.views!==null).map(v=>[v.id,v.views]))};
+  const k=Object.keys(h.days).sort();while(k.length>HIST_DAYS)delete h.days[k.shift()];
+  try{localStorage.setItem(HIST_KEY,JSON.stringify(h))}catch{} return h;}
+function prevDay(h){const t=dayKey(Date.now()),k=Object.keys(h.days).filter(x=>x<t).sort();
+  return k.length?{key:k.at(-1),...h.days[k.at(-1)]}:null;}
+function histBefore(h,iso){const t=dayKey(iso),k=Object.keys(h.days).filter(x=>x<=t).sort();
+  return k.length?{key:k.at(-1),...h.days[k.at(-1)]}:null;}
+
+async function api(path,params){
+  const q=new URLSearchParams({...params,key:apiKey()});
+  const r=await fetch(`https://www.googleapis.com/youtube/v3/${path}?${q}`);
+  const b=await r.json().catch(()=>({}));
+  if(!r.ok){
+    const e=new Error(b?.error?.message||`HTTP ${r.status}`);
+    // callers branch on these, not on the prose message, which Google rewords
+    e.status=r.status;
+    e.reason=b?.error?.errors?.[0]?.reason||"";
+    throw e;
+  }
+  return b;
+}
+async function vidStats(ids){const o={};
+  for(const g of chunk(ids,50)){const r=await api("videos",{part:"statistics",id:g.join(",")});
+    for(const it of r.items||[])o[it.id]=it.statistics;} return o;}
+function deco(v,s){const x=s[v.id]||{};
+  v.views=x.viewCount===undefined?null:+x.viewCount;
+  v.likes=x.likeCount===undefined?null:+x.likeCount;
+  v.comments=x.commentCount===undefined?null:+x.commentCount;
+  v.perDay=v.views===null?null:Math.round(v.views/Math.max(ageD(v.published),1));
+  v.eng=(v.views&&v.likes!==null)?v.likes/v.views*100:null;
+  v.isNew=ageD(v.published)<1; return v;}
+
+let ST={channels:[],videos:[],errors:[],at:null};
+let LINK={configured:false,linked:{},redirect_uri:""};
+let DEEP={},ANA={},SORT={k:"published",dir:-1},FILTER=null,Q="",RANGE={k:"7",from:"",to:""},TIMER=null;
+const route=()=>location.hash.replace(/^#\/?/,"")||"";
+const linked=l=>!!LINK.linked?.[l];
+const beat=(k,t)=>{$("#beat").className="beat"+(k==="busy"?" busy":k==="err"?" err":"");$("#beatTxt").textContent=t;};
+
+const GIS_CID="yt_gis_client_id", GIS_TOK="yt_gis_tokens", GIS_LNK="yt_gis_linked";
+const gisCid=()=>localStorage.getItem(GIS_CID)||"";
+const gisTokens=()=>{try{return JSON.parse(sessionStorage.getItem(GIS_TOK))||{}}catch{return{}}};
+const gisSave=o=>sessionStorage.setItem(GIS_TOK,JSON.stringify(o));
+const gisLinked=()=>{try{return JSON.parse(localStorage.getItem(GIS_LNK))||{}}catch{return{}}};
+
+async function linkStatus(){
+  if(MODE==="local"){
+    try{LINK=await(await fetch("/status")).json();}
+    catch{LINK={configured:false,linked:{},redirect_uri:""};}
+  }else if(MODE==="hosted"){
+    LINK={configured:!!gisCid(),linked:gisLinked(),client_id:gisCid(),origin:location.origin};
+  }else{
+    LINK={configured:false,linked:{},redirect_uri:""};
+  }
+}
+
+/** Browser sign-in via Google Identity Services. Google hands this tab a one-hour
+    access token directly: there is no client secret anywhere and the token never
+    leaves the device. */
+function gisConnect(label){
+  const cid=gisCid();
+  if(!cid){toast("Add your OAuth Client ID first","r");return;}
+  if(!window.google?.accounts?.oauth2){toast("Google sign-in hasn't loaded yet — try again","r");return;}
+  google.accounts.oauth2.initTokenClient({
+    client_id:cid,
+    scope:"https://www.googleapis.com/auth/yt-analytics.readonly",
+    prompt:"select_account",
+    callback:resp=>{
+      if(resp.error){toast("Sign-in failed: "+esc(resp.error),"r");return;}
+      const tk=gisTokens();
+      tk[label]={token:resp.access_token,exp:Date.now()+(resp.expires_in||3600)*1000};
+      gisSave(tk);
+      const lk=gisLinked();
+      lk[label]={at:new Date().toISOString().slice(0,16).replace("T"," ")};
+      localStorage.setItem(GIS_LNK,JSON.stringify(lk));
+      closeModal();toast("Channel linked — loading analytics","g");
+      linkStatus().then(()=>{ANA={};render();});
+    }}).requestAccessToken();
+}
+
+function setupScreen(){
+  $("#crumb").textContent="Setup";
+  $("#sbScroll").innerHTML="";
+  $("#page").innerHTML=`
+    <div class="stats" style="grid-template-columns:1fr;max-width:620px">
+      <div class="stat"><div class="lb">Welcome</div>
+        <div class="vl" style="font-size:19px">Add your channels</div>
+        <div class="ft" style="white-space:normal">This portal ships empty on purpose — nothing about
+          your channels is stored in the app itself.</div></div>
+    </div>
+    <div class="alert i" style="max-width:620px">Open the <b>setup link</b> you were given and this
+      fills in automatically. Or paste the configuration below — it stays in this browser only.</div>
+    <div class="tbl" style="max-width:620px;padding:18px">
+      <div class="fld"><label>Configuration</label>
+        <textarea id="cfgIn" rows="7" placeholder='{"apiKey":"AIza…","channels":[{"label":"ch1","id":"UC…","tiktok":"@handle"}]}'
+          style="width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;
+                 color:var(--fg);padding:10px 12px;font:12px ui-monospace,monospace;resize:vertical"></textarea></div>
+      <div class="mrow"><button class="btn pri" id="cfgSave">Save and load</button>
+        <span id="cfgMsg" class="note" style="margin:0"></span></div>
+    </div>`;
+  $("#cfgSave").onclick=()=>{
+    try{
+      const cfg=JSON.parse($("#cfgIn").value.trim());
+      if(!Array.isArray(cfg.channels)||!cfg.channels.length) throw new Error("channels[] is required");
+      localStorage.setItem(CFG_KEY,JSON.stringify(cfg));
+      if(cfg.apiKey) localStorage.setItem(KEY_STORE,cfg.apiKey);
+      CHANNELS=cfg.channels; toast("Saved — loading your channels","g"); load();
+    }catch(e){ $("#cfgMsg").innerHTML='<span class="warn">'+esc(e.message)+'</span>'; }
+  };
+}
+
+async function load(){
+  if(!CHANNELS.length && !loadConfig()){ beat("err","setup needed"); setupScreen(); return; }
+  const b=$("#refresh");b.disabled=true;beat("busy","syncing");
+  await linkStatus();
+  const errors=[];let items;
+  try{ items=(await api("channels",{part:"snippet,statistics,contentDetails",
+        id:CHANNELS.map(c=>c.id).join(",")})).items||[]; }
+  catch(e){ beat("err","failed");
+    $("#page").innerHTML=`<div class="alert e"><b>Could not reach the YouTube API.</b><br>${esc(e.message)}
+      ${/suspend|not valid|disabled/i.test(e.message)?`<br><br>This usually means the API key was suspended or is
+      wrong. Open <b>API</b> in the top bar and paste a working key.`:""}</div>`;
+    b.disabled=false; return; }
+  const by=Object.fromEntries(items.map(i=>[i.id,i]));
+  const channels=CHANNELS.map(c=>{const it=by[c.id];
+    if(!it){errors.push(c.label);return{...c,dead:true};}
+    return{...c,dead:false,title:it.snippet.title,
+      avatar:it.snippet.thumbnails?.default?.url||"",
+      subs:+it.statistics.subscriberCount||0,views:+it.statistics.viewCount||0,
+      count:+it.statistics.videoCount||0,uploads:it.contentDetails?.relatedPlaylists?.uploads};});
+  const live=channels.filter(c=>!c.dead&&c.uploads);
+  const lists=await Promise.all(live.map(async c=>{
+    try{const r=await api("playlistItems",{part:"snippet",playlistId:c.uploads,maxResults:String(PER_CHANNEL)});
+      return (r.items||[]).map(i=>({channel:c.label,id:i.snippet.resourceId.videoId,title:i.snippet.title,
+        published:i.snippet.publishedAt,thumb:i.snippet.thumbnails?.medium?.url||i.snippet.thumbnails?.default?.url||""}));
+    }catch{errors.push(c.label);return[];}}));
+  const videos=lists.flat();
+  let s={};try{s=await vidStats(videos.map(v=>v.id));}catch{errors.push("stats");}
+  videos.forEach(v=>deco(v,s));
+  for(const c of channels){const m=videos.filter(v=>v.channel===c.label&&v.views!==null);
+    c.rc=m.length;c.avg=m.length?Math.round(m.reduce((a,v)=>a+v.views,0)/m.length):null;}
+  ST={channels,videos,errors,at:new Date()};DEEP={};ANA={};
+  writeHist(ST);render();
+  probeDead();
+  beat(errors.length?"err":"ok",(errors.length?errors.length+" issue · ":"")+ST.at.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}));
+  b.disabled=false;
+}
+/** channels.list returns nothing for a terminated channel, a deleted one AND a
+    brand-new one that isn't indexed yet. Ask the server to read the public
+    channel page so the card can say which it actually is. */
+async function probeDead(){
+  const dead=ST.channels.filter(c=>c.dead&&!c.probe);
+  if(!dead.length) return;
+  await Promise.all(dead.map(async c=>{ c.probe=await probeOne(c); }));
+  render();
+  const gone=ST.channels.filter(c=>["terminated","gone"].includes(c.probe?.status));
+  if(gone.length) toast(`<b>${gone.map(c=>c.label).join(", ")}</b> is no longer on YouTube`,"r");
+}
+
+/** Ask the serverless probe first — it reads the real channel page, so it can say
+    "terminated" with certainty. If that isn't reachable, fall back to a pure Data
+    API test that still separates "gone" from "alive but not indexed yet". */
+/** A scheduled GitHub Action probes each channel page and publishes status.json.
+    Its keys are SHA-256 of the channel ID, so the published file reveals no IDs. */
+let STATUS_MAP=null;
+async function loadStatusMap(){
+  if(STATUS_MAP!==null) return STATUS_MAP;
+  try{
+    const r=await fetch("status.json?t="+Date.now());
+    STATUS_MAP = r.ok ? await r.json() : {};
+  }catch{ STATUS_MAP={}; }
+  return STATUS_MAP;
+}
+async function sha256hex(s){
+  const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+
+async function probeOne(c){
+  // published status first — it is the only source that can say "terminated" for sure
+  try{
+    const map=await loadStatusMap();
+    const h=await sha256hex(c.id);
+    const hit=map[h]||map[h.slice(0,16)];
+    if(hit?.status && hit.status!=="unknown") return hit;
+  }catch{}
+  if(MODE!=="file"){
+    const url = MODE==="local" ? "/probe?id=" : "/api/probe?id=";
+    try{
+      const r=await fetch(url+encodeURIComponent(c.id));
+      if(r.ok){const j=await r.json(); if(j.status&&j.status!=="unknown") return j;}
+    }catch{}
+  }
+  return apiProbe(c);
+}
+
+/** No server required. A channel's uploads playlist is "UU"+id. If the channel is
+    gone that playlist 404s; if the channel is merely un-indexed it still works. */
+async function apiProbe(c){
+  try{
+    const r=await api("playlistItems",{part:"snippet",playlistId:"UU"+c.id.slice(2),maxResults:"1"});
+    const it=(r.items||[])[0];
+    return {status:"indexing",title:it?.snippet?.channelTitle||"",via:"api"};
+  }catch(e){
+    if(e.status===404||e.reason==="playlistNotFound") return {status:"gone",title:"",via:"api"};
+    return {status:"unknown",title:"",via:"api"};
+  }
+}
+
+async function loadDeep(l){
+  if(DEEP[l])return DEEP[l];
+  const c=ST.channels.find(x=>x.label===l); if(!c||c.dead||!c.uploads)return[];
+  const out=[];let t;
+  do{const r=await api("playlistItems",{part:"snippet",playlistId:c.uploads,maxResults:"50",...(t?{pageToken:t}:{})});
+    for(const i of r.items||[])out.push({channel:l,id:i.snippet.resourceId.videoId,title:i.snippet.title,
+      published:i.snippet.publishedAt,thumb:i.snippet.thumbnails?.medium?.url||""});
+    t=r.nextPageToken;}while(t&&out.length<DEEP_MAX);
+  const s=await vidStats(out.map(v=>v.id));out.forEach(v=>deco(v,s));
+  DEEP[l]=out;return out;
+}
+async function loadAna(l,a,b2){
+  const k=`${l}|${a}|${b2}`; if(ANA[k])return ANA[k];
+  const metrics="views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,subscribersGained,likes";
+  let d;
+  if(MODE==="local"){
+    const q=new URLSearchParams({ch:l,start:a,end:b2,dimensions:"day",metrics});
+    d=await(await fetch("/analytics?"+q)).json();
+  }else{
+    const tk=gisTokens()[l];
+    if(!tk||tk.exp<Date.now()) throw new Error("SESSION_EXPIRED");
+    const q=new URLSearchParams({ids:"channel==MINE",startDate:a,endDate:b2,dimensions:"day",metrics});
+    const r=await fetch("https://youtubeanalytics.googleapis.com/v2/reports?"+q,
+      {headers:{Authorization:"Bearer "+tk.token}});
+    d=await r.json();
+  }
+  if(d.error) throw new Error(typeof d.error==="string"?d.error:(d.error.message||JSON.stringify(d.error)));
+  const rows=(d.rows||[]).map(x=>({day:x[0],views:x[1],minutes:x[2],avgDur:x[3],avgPct:x[4],subs:x[5],likes:x[6]}));
+  const tot=rows.reduce((z,r)=>({views:z.views+r.views,minutes:z.minutes+r.minutes,subs:z.subs+r.subs}),
+    {views:0,minutes:0,subs:0});
+  tot.avgDur=rows.length?rows.reduce((z,r)=>z+r.avgDur,0)/rows.length:null;
+  tot.avgPct=rows.length?rows.reduce((z,r)=>z+r.avgPct,0)/rows.length:null;
+  return ANA[k]={rows,tot};
+}
+
+function trendEl(now,before){
+  if(before===undefined||before===null||now===null)return `<span class="trend fl">—</span>`;
+  const d=now-before; if(!d)return `<span class="trend fl">0</span>`;
+  return `<span class="trend ${d>0?"up":"dn"}">${d>0?"▲":"▼"} ${kf(Math.abs(d))}</span>`;
+}
+function spark(vals,w=240,h=44,fill=true){
+  if(vals.length<2)return "";
+  const mn=Math.min(...vals),mx=Math.max(...vals),rg=(mx-mn)||1;
+  const p=vals.map((v,i)=>[i/(vals.length-1)*w,h-3-((v-mn)/rg)*(h-9)]);
+  const d=p.map((q,i)=>(i?"L":"M")+q[0].toFixed(1)+" "+q[1].toFixed(1)).join(" ");
+  const gid="sg"+Math.random().toString(36).slice(2,7);
+  return `<svg class="ch-spk" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4d8dff" stop-opacity=".26"/><stop offset="1" stop-color="#4d8dff" stop-opacity="0"/>
+    </linearGradient></defs>
+    ${fill?`<path d="${d} L ${w} ${h} L 0 ${h} Z" fill="url(#${gid})"/>`:""}
+    <path d="${d}" fill="none" stroke="#4d8dff" stroke-width="1.7" stroke-linejoin="round"/></svg>`;
+}
+/** proper chart: grid, axis labels, hover tooltip */
+function chart(pairs,label,kind="bar"){
+  if(!pairs.length)return `<div class="blank"><div class="bi">◔</div>No data in this range.</div>`;
+  const W=760,H=210,PL=44,PR=8,PT=10,PB=24, iw=W-PL-PR, ih=H-PT-PB;
+  const mx=Math.max(1,...pairs.map(p=>p[1]));
+  const ticks=4, id="c"+Math.random().toString(36).slice(2,7);
+  const x=i=>PL+(pairs.length===1?iw/2:i/(pairs.length-1)*iw);
+  const y=v=>PT+ih-(v/mx)*ih;
+  let marks="",body="";
+  if(kind==="bar"){
+    const bw=Math.max(1.5,Math.min(26,iw/pairs.length*.66));
+    body=pairs.map((p,i)=>`<rect class="bar" x="${(x(i)-bw/2).toFixed(1)}" y="${y(p[1]).toFixed(1)}"
+      width="${bw.toFixed(1)}" height="${Math.max(0,(PT+ih-y(p[1]))).toFixed(1)}" rx="2"
+      style="animation-delay:${(i*.012).toFixed(3)}s"/>`).join("");
+  }else{
+    const d=pairs.map((p,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(p[1]).toFixed(1)).join(" ");
+    body=`<path d="${d} L ${x(pairs.length-1).toFixed(1)} ${PT+ih} L ${PL} ${PT+ih} Z" fill="url(#${id}f)"/>
+          <path class="ln" d="${d}"/>`;
+  }
+  marks=pairs.map((p,i)=>`<circle class="mk" data-i="${i}" cx="${x(i).toFixed(1)}" cy="${y(p[1]).toFixed(1)}"
+    r="3.2" fill="#4d8dff" stroke="#08090c" stroke-width="1.6" opacity="0"/>`).join("");
+  const grid=Array.from({length:ticks+1},(_,i)=>{const v=mx*i/ticks,yy=y(v);
+    return `<line class="gl" x1="${PL}" x2="${W-PR}" y1="${yy.toFixed(1)}" y2="${yy.toFixed(1)}"/>
+            <text class="ax" x="${PL-7}" y="${(yy+3.5).toFixed(1)}" text-anchor="end">${kf(v)}</text>`;}).join("");
+  const step=Math.max(1,Math.ceil(pairs.length/6));
+  const xl=pairs.map((p,i)=>i%step===0||i===pairs.length-1
+    ?`<text class="ax" x="${x(i).toFixed(1)}" y="${H-7}" text-anchor="middle">${String(p[0]).slice(5)}</text>`:"").join("");
+  const hits=pairs.map((p,i)=>{const w=iw/pairs.length;
+    return `<rect class="hit" data-i="${i}" data-l="${esc(p[0])}" data-v="${p[1]}"
+      x="${(x(i)-w/2).toFixed(1)}" y="${PT}" width="${w.toFixed(1)}" height="${ih}"/>`;}).join("");
+  return `<div class="chartbox"><div class="tip" id="${id}t"></div>
+    <svg class="chart" id="${id}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <defs><linearGradient id="${id}f" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#4d8dff" stop-opacity=".3"/><stop offset="1" stop-color="#4d8dff" stop-opacity="0"/></linearGradient>
+        <linearGradient id="bg1" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#5f9aff"/><stop offset="1" stop-color="#3563c9"/></linearGradient></defs>
+      ${grid}${body}${marks}${xl}${hits}
+    </svg><div class="note" style="margin-top:8px">${esc(label)}</div></div>`;
+}
+function wireCharts(){
+  $$(".chartbox").forEach(box=>{
+    const svg=box.querySelector("svg"), tip=box.querySelector(".tip");
+    if(!svg||!tip)return;
+    svg.querySelectorAll(".hit").forEach(h=>{
+      h.addEventListener("mouseenter",()=>{
+        const i=h.dataset.i, mk=svg.querySelector(`.mk[data-i="${i}"]`);
+        svg.querySelectorAll(".mk").forEach(m=>m.classList.remove("show"));
+        mk?.classList.add("show");
+        tip.innerHTML=`<div class="tl">${esc(h.dataset.l)}</div><b>${nf(h.dataset.v)}</b>`;
+        const r=box.getBoundingClientRect(), br=h.getBoundingClientRect();
+        tip.style.opacity="1";
+        tip.style.left=Math.min(r.width-tip.offsetWidth-8,Math.max(6,br.left-r.left+br.width/2-tip.offsetWidth/2))+"px";
+        tip.style.top=Math.max(4,br.top-r.top-6)+"px";
+      });
+    });
+    svg.addEventListener("mouseleave",()=>{tip.style.opacity="0";
+      svg.querySelectorAll(".mk").forEach(m=>m.classList.remove("show"));});
+  });
+}
+
+function bounds(){
+  const now=Date.now();
+  if(RANGE.k==="all")return{from:null,to:null,label:"All time"};
+  if(RANGE.k==="custom"){const f=RANGE.from?new Date(RANGE.from+"T00:00:00").getTime():null;
+    const t=RANGE.to?new Date(RANGE.to+"T23:59:59").getTime():null;
+    return{from:f,to:t,label:`${RANGE.from||"…"} → ${RANGE.to||"…"}`};}
+  const d=+RANGE.k;return{from:now-d*864e5,to:null,label:d===1?"Last 24 hours":`Last ${d} days`};
+}
+const inR=(iso,b)=>{const t=new Date(iso).getTime();
+  return (b.from===null||t>=b.from)&&(b.to===null||t<=b.to);};
+
+/* ══ sidebar ══ */
+function sidebar(){
+  const cur=route();
+  const ranked=[...ST.channels].sort((a,b)=>a.dead!==b.dead?(a.dead?1:-1):(b.avg??-1)-(a.avg??-1));
+  $("#sbSub").textContent=`${ST.channels.filter(c=>!c.dead).length} channels`;
+  $("#sbScroll").innerHTML=`
+    <div class="nav ${!cur?"on":""}" data-go="">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/>
+        <rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+      <span class="nm">Overview</span></div>
+    <div class="sb-lbl">Channels</div>
+    ${ranked.map(c=>{
+      const pip=c.dead?(c.probe?.status==="indexing"?"a":"r"):(c.avg!==null&&c.avg<LOW_VIEWS?"a":"g");
+      return `<div class="nav ${cur===c.label?"on":""}" data-go="${c.label}">
+        ${c.avatar?`<img class="av" src="${esc(c.avatar)}" alt="" loading="lazy">`:`<span class="av"></span>`}
+        <span class="nm">${esc(c.title||c.label)}</span>
+        <span class="mini">${c.dead?"—":kf(c.subs)}</span><span class="pip ${pip}"></span></div>`;
+    }).join("")}`;
+  $$("#sbScroll .nav").forEach(el=>el.onclick=()=>{location.hash=el.dataset.go?"#/"+el.dataset.go:"";closeSb();});
+}
+const closeSb=()=>{$("#sb").classList.remove("open");$("#scrim2").classList.remove("on");};
+
+/* ══ overview ══ */
+function overview(){
+  const hist=readHist(),prev=prevDay(hist);
+  const {channels,videos,errors}=ST, live=channels.filter(c=>!c.dead);
+  $("#crumb").innerHTML=`Overview <span class="dim">· ${live.length} channels</span>`;
+
+  const tSubs=live.reduce((a,c)=>a+c.subs,0), tViews=live.reduce((a,c)=>a+c.views,0);
+  const pSubs=prev?live.reduce((a,c)=>a+(prev.channels?.[c.label]?.subs??c.subs),0):null;
+  const pViews=prev?live.reduce((a,c)=>a+(prev.channels?.[c.label]?.views??c.views),0):null;
+  const today=videos.filter(v=>ageD(v.published)<1);
+  const best=[...videos.filter(v=>v.views!==null&&ageD(v.published)<2)].sort((a,b)=>b.views-a.views)[0];
+  const ranked=[...channels].sort((a,b)=>a.dead!==b.dead?(a.dead?1:-1):(b.avg??-1)-(a.avg??-1));
+  const top=ranked.find(c=>!c.dead&&c.avg!==null)?.label;
+  const days=Object.keys(hist.days).sort();
+  const totSeries=days.map(d=>Object.values(hist.days[d].channels||{}).reduce((a,x)=>a+(x.views||0),0)).filter(Boolean);
+  const maxPD=Math.max(1,...videos.map(v=>v.perDay||0));
+
+  let rows=videos.filter(v=>(!FILTER||v.channel===FILTER)&&(!Q||v.title.toLowerCase().includes(Q)));
+  const val=v=>SORT.k==="d24"?(()=>{const b=prev?.videos?.[v.id];
+    return (b===undefined||v.views===null)?-1:v.views-b;})():v[SORT.k];
+  rows.sort((a,b)=>{const A=val(a),B=val(b);
+    return (typeof A==="string"||typeof B==="string")?cmpv(String(A),String(B))*SORT.dir:cmpv(A??-1,B??-1)*SORT.dir;});
+
+  $("#page").innerHTML=`
+    ${deadAlert()}
+    ${!SERVED?`<div class="alert i"><b>Running from a file.</b> Launch <b>YT Dashboard</b> from your
+      Desktop to enable per-channel API linking (real per-day views, watch time, retention).</div>`:""}
+
+    <div class="stats">
+      ${statCard("Total subscribers",kf(tSubs),trendEl(tSubs,pSubs)+(prev?` vs ${prev.key}`:" tracking starts today"),
+                 totSeries.length>1?spark(days.map(d=>Object.values(hist.days[d].channels||{}).reduce((a,x)=>a+(x.subs||0),0)),240,38):"",0)}
+      ${statCard("Total views",kf(tViews),trendEl(tViews,pViews)+(prev?` vs ${prev.key}`:" tracking starts today"),
+                 totSeries.length>1?spark(totSeries,240,38):"",.04)}
+      ${statCard("Uploaded today",String(today.length),today.length?[...new Set(today.map(v=>v.channel))].join(", "):"nothing yet","",.08)}
+      ${statCard("Best · 48h",best?kf(best.views):"—",best?esc(best.channel+" · "+best.title.slice(0,22)):"no recent uploads","",.12)}
+      ${statCard("Channels",`${live.length}<span style="font-size:14px;color:var(--faint)"> / ${channels.length}</span>`,
+                 Object.keys(LINK.linked||{}).length?`${Object.keys(LINK.linked).length} linked to API`:"public data",'',.16)}
+    </div>
+
+    <div class="h">Channels <span class="n">ranked by average views on recent uploads</span></div>
+    <div class="cards">${ranked.map((c,i)=>channelCard(c,prev,top,i,hist)).join("")}</div>
+
+    <div class="h">Recent uploads <span class="n">newest first · ${PER_CHANNEL} per channel</span></div>
+    <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <div class="srch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+        <input type="search" id="q" placeholder="Search titles…" value="${esc(Q)}"></div>
+      <div class="seg" id="chseg"><button class="${!FILTER?"on":""}" data-ch="">All</button>
+        ${live.map(c=>`<button class="${FILTER===c.label?"on":""}" data-ch="${c.label}">${c.label}</button>`).join("")}</div>
+    </div>
+    ${table(rows,prev,maxPD,best,true)}
+    <div class="note">${foot(hist,prev)}</div>`;
+
+  wireCommon(overview);
+  $("#chseg").querySelectorAll("button").forEach(b=>b.onclick=()=>{FILTER=b.dataset.ch||null;overview();});
+  $$(".ch[data-go]").forEach(el=>el.onclick=()=>location.hash="#/"+el.dataset.go);
+}
+function deadAlert(){
+  const dead=ST.channels.filter(c=>c.dead);
+  if(!dead.length) return "";
+  const by=s=>dead.filter(c=>c.probe?.status===s).map(c=>c.label);
+  const term=by("terminated"), miss=by("missing"), idx=by("indexing");
+  const pending=dead.filter(c=>!c.probe).map(c=>c.label);
+  const bits=[];
+  if(term.length) bits.push(`<b>${term.join(", ")} terminated by YouTube.</b> Uploads to ${term.length>1?"these channels":"this channel"} will fail until restored.`);
+  const gone=by("gone");
+  if(gone.length) bits.push(`<b>${gone.join(", ")} is no longer on YouTube</b> — terminated or deleted. Uploads will fail.`);
+  if(miss.length) bits.push(`<b>${miss.join(", ")} not found</b> — deleted, or the channel ID is wrong.`);
+  if(idx.length) bits.push(`<b>${idx.join(", ")} is live but not indexed by the API yet.</b> Normal for a new channel; stats appear on their own.`);
+  if(pending.length) bits.push(`Checking ${pending.join(", ")}…`);
+  const bad=term.length||miss.length;
+  return `<div class="alert ${bad?"e":"i"}">${bits.join("<br>")}</div>`;
+}
+function statCard(lb,vl,ft,spk,delay){
+  return `<div class="stat" style="animation-delay:${delay}s"><div class="lb">${lb}</div>
+    <div class="vl">${vl}</div><div class="ft">${ft}</div>
+    ${spk?`<div class="spk">${spk}</div>`:""}</div>`;
+}
+function channelCard(c,prev,top,i,hist){
+  const dl=(i*.035).toFixed(2);
+  if(c.dead){
+    const s=c.probe?.status;
+    const M={
+      terminated:["TERMINATED","b-off","Terminated by YouTube for a Terms of Service violation. Uploads to this channel will fail until it is restored."],
+      missing:["NOT FOUND","b-off","No channel exists at this ID any more — deleted, or the ID in the dashboard is wrong."],
+      gone:["CHANNEL GONE","b-off","This channel is no longer on YouTube — terminated or deleted. Open it on YouTube to see which."],
+      indexing:["INDEXING","b-low","Live on YouTube, but the Data API hasn't indexed it yet. Normal for a channel created in the last day or two — stats appear on their own."],
+      unknown:["NO DATA","b-low","Couldn't determine why. Press Refresh; if it stays, open the channel in a browser."],
+    };
+    const [txt,cls,msg]=M[s]||["CHECKING…","b-low","Looking up what happened to this channel…"];
+    const name=c.probe?.title||c.label;
+    return `<div class="ch off" style="animation-delay:${dl}s">
+      <div class="ch-top"><span class="ch-av"></span>
+        <div class="ch-id"><div class="ch-nm">${esc(name)}</div>
+          <div class="ch-hd">${c.label} · ${esc(c.tiktok)}</div></div>
+        <span class="badge ${cls}">${txt}</span></div>
+      <div class="note" style="margin:0">${msg}</div>
+      <div class="ch-foot"><span class="tiny">
+        <a href="https://www.youtube.com/channel/${c.id}" target="_blank" rel="noopener"
+           style="color:var(--accent)">Open on YouTube ↗</a></span></div></div>`;
+  }
+  const p=prev?.channels?.[c.label];
+  let badge="";
+  if(c.count<=3) badge='<span class="badge b-new">NEW</span>';
+  else if(c.label===top) badge='<span class="badge b-top">TOP</span>';
+  else if(c.avg!==null&&c.avg<LOW_VIEWS) badge='<span class="badge b-low">LOW</span>';
+  const ser=Object.keys(hist.days).sort().map(k=>hist.days[k].channels?.[c.label]?.views).filter(v=>v!==undefined);
+  return `<div class="ch" data-go="${c.label}" style="animation-delay:${dl}s">
+    <div class="ch-top">
+      ${c.avatar?`<img class="ch-av" src="${esc(c.avatar)}" alt="" loading="lazy">`:`<span class="ch-av"></span>`}
+      <div class="ch-id"><div class="ch-nm">${esc(c.title)}</div>
+        <div class="ch-hd">${c.label} · ${esc(c.tiktok)}</div></div>${badge}</div>
+    <div class="mets">
+      <div class="met"><div class="k">Subscribers</div>
+        <div class="v">${kf(c.subs)}${p?trendEl(c.subs,p.subs):""}</div></div>
+      <div class="met"><div class="k">Total views</div>
+        <div class="v">${kf(c.views)}${p?trendEl(c.views,p.views):""}</div></div>
+      <div class="met"><div class="k">Videos</div><div class="v">${nf(c.count)}</div></div>
+      <div class="met"><div class="k">Avg · last ${c.rc}</div><div class="v">${c.avg===null?"—":kf(c.avg)}</div></div>
+    </div>
+    <div class="ch-foot"><span class="tiny">${linked(c.label)
+      ?'<span class="pip g"></span> API linked':'<span class="pip" style="background:var(--faint)"></span> public data'}</span>
+      <span class="tiny">Open →</span></div>
+    ${ser.length>1?spark(ser):""}</div>`;
+}
+function table(rows,prev,maxPD,best,showCh){
+  const cols=[...(showCh?[["channel","Channel",""]]:[]),["title","Video",""],["published","Age",""],
+    ["views","Views","n"],["perDay","Views / day","n"],["d24","24h","n"],["eng","Eng.","n"],
+    ["likes","Likes","n"],["comments","Comments","n"]];
+  return `<div class="tbl"><div class="tscroll"><table><thead><tr>
+    ${cols.map(([k,t,cl])=>`<th data-k="${k}" class="${cl} ${SORT.k===k?"on "+(SORT.dir===-1?"desc":"asc"):""}">${t}<i class="ar"></i></th>`).join("")}
+  </tr></thead><tbody>
+    ${rows.length?rows.map(v=>`<tr class="${v.isNew?"hot":""}">
+      ${showCh?`<td><span class="chip">${v.channel}</span></td>`:""}
+      <td><a class="vcell" href="https://www.youtube.com/watch?v=${v.id}" target="_blank" rel="noopener">
+        ${v.thumb?`<img class="thumb" src="${esc(v.thumb)}" alt="" loading="lazy">`:`<span class="thumb"></span>`}
+        <span class="vmeta"><span class="vtitle">${best&&v.id===best.id?'★ ':''}${esc(v.title)}</span>
+        <span class="vsub">${v.isNew?'<span class="tag">NEW</span>':""}${nf(v.likes)} likes</span></span></a></td>
+      <td style="color:var(--faint);white-space:nowrap">${ago(v.published)}</td>
+      <td class="n"><b>${nf(v.views)}</b></td>
+      <td class="n">${nf(v.perDay)}${v.perDay?`<div class="meter"><i style="width:${Math.max(3,v.perDay/maxPD*100)}%"></i></div>`:""}</td>
+      <td class="n">${trendEl(v.views,prev?.videos?.[v.id])}</td>
+      <td class="n">${v.eng===null?"—":v.eng.toFixed(1)+"%"}</td>
+      <td class="n">${nf(v.likes)}</td><td class="n">${nf(v.comments)}</td></tr>`).join("")
+    :`<tr><td colspan="${cols.length}"><div class="blank"><div class="bi">⌕</div>Nothing matches this filter.</div></td></tr>`}
+  </tbody></table></div></div>`;
+}
+function foot(hist,prev){
+  const d=Object.keys(hist.days).length;
+  return [prev?`<b>24h</b> compares against the reading saved on <b>${prev.key}</b> — history builds automatically, ${d} day(s) so far.`
+              :`<b>24h</b> is empty because today is the first recorded day. It fills in from tomorrow.`,
+    `<b>Views / day</b> = lifetime views ÷ days since upload, so old and new videos compare fairly.`,
+    `Watch time and retention need a channel <b>linked to the API</b>.`].join("<br>");
+}
+
+/* ══ channel page ══ */
+async function channelPage(label){
+  const c=ST.channels.find(x=>x.label===label);
+  if(!c){location.hash="";return;}
+  const hist=readHist(),prev=prevDay(hist);
+  $("#crumb").innerHTML=`<a href="#" style="color:var(--faint)">Overview</a>
+    <span class="dim">/</span> ${esc(c.title||label)}`;
+  $("#page").innerHTML=`<div class="stats">${'<div class="sk"></div>'.repeat(4)}</div>`;
+
+  let vids=[];
+  try{vids=await loadDeep(label);}
+  catch(e){$("#page").innerHTML=`<div class="alert e">Could not load uploads: ${esc(e.message)}</div>`;return;}
+
+  const draw=async()=>{
+    const b=bounds(), inr=vids.filter(v=>inR(v.published,b));
+    const wv=inr.filter(v=>v.views!==null);
+    const sum=wv.reduce((a,v)=>a+v.views,0);
+    const avg=wv.length?Math.round(sum/wv.length):null;
+    const best=[...wv].sort((x,y)=>y.views-x.views)[0];
+    const maxPD=Math.max(1,...inr.map(v=>v.perDay||0));
+    const startIso=b.from?new Date(b.from).toISOString():Object.keys(hist.days).sort()[0];
+    const base=startIso?histBefore(hist,startIso):null;
+    const bv=base?.channels?.[label]?.views;
+    const gained=(bv===undefined||bv===null)?null:c.views-bv;
+
+    let ana=null,anaErr=null;
+    if(SERVED&&linked(label)){
+      const end=dayKey(Date.now());
+      const st=b.from?dayKey(b.from):(vids.length?dayKey(vids.at(-1).published):"2005-01-01");
+      try{ana=await loadAna(label,st,b.to?dayKey(b.to):end);}catch(e){anaErr=e.message;}
+    }
+
+    let rows=inr.filter(v=>!Q||v.title.toLowerCase().includes(Q));
+    const val=v=>SORT.k==="d24"?(()=>{const x=prev?.videos?.[v.id];
+      return (x===undefined||v.views===null)?-1:v.views-x;})():v[SORT.k];
+    rows.sort((x,y)=>{const A=val(x),B=val(y);
+      return (typeof A==="string"||typeof B==="string")?cmpv(String(A),String(B))*SORT.dir:cmpv(A??-1,B??-1)*SORT.dir;});
+
+    const bk={};inr.forEach(v=>{const k=dayKey(v.published);bk[k]=(bk[k]||0)+1;});
+    const upPairs=Object.keys(bk).sort().map(k=>[k,bk[k]]);
+
+    $("#page").innerHTML=`
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:18px">
+        ${c.avatar?`<img class="ch-av" style="width:48px;height:48px" src="${esc(c.avatar)}" alt="">`:""}
+        <div style="flex:1;min-width:170px">
+          <div style="font-size:19px;font-weight:650;letter-spacing:-.4px">${esc(c.title||label)}</div>
+          <div style="font-size:12px;color:var(--faint)">${label} · ${esc(c.tiktok)} ·
+            <a href="https://www.youtube.com/channel/${c.id}" target="_blank" rel="noopener"
+               style="color:var(--accent)">YouTube ↗</a></div></div>
+        <button class="btn ${linked(label)?"":"pri"}" id="lk">${linked(label)?"● API linked":"Link API"}</button>
+      </div>
+
+      <div class="seg" id="rng" style="margin-bottom:16px">
+        ${RANGES.map(([k,t])=>`<button class="${RANGE.k===k?"on":""}" data-r="${k}">${t}</button>`).join("")}
+      </div>
+      ${RANGE.k==="custom"?`<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+        <input type="date" id="cf" value="${RANGE.from}" style="width:auto">
+        <span style="color:var(--faint)">→</span>
+        <input type="date" id="ct" value="${RANGE.to}" style="width:auto"></div>`:""}
+
+      ${ana?`<div class="h" style="margin-top:4px">API analytics <span class="n">private data · ${esc(b.label)}</span></div>
+      <div class="stats">
+        ${statCard("Views","<span style='color:var(--accent)'>"+kf(ana.tot.views)+"</span>","real per-day data","",0)}
+        ${statCard("Watch time",ana.tot.minutes>=60?(ana.tot.minutes/60).toFixed(1)+"h":Math.round(ana.tot.minutes)+"m",
+                   nf(Math.round(ana.tot.minutes))+" minutes","",.04)}
+        ${statCard("Avg duration",ana.tot.avgDur===null?"—":`${Math.floor(ana.tot.avgDur/60)}:${String(Math.round(ana.tot.avgDur%60)).padStart(2,"0")}`,"per view","",.08)}
+        ${statCard("Retention",ana.tot.avgPct===null?"—":ana.tot.avgPct.toFixed(1)+"%","average % watched","",.12)}
+        ${statCard("Subs gained",kf(ana.tot.subs),"in this range","",.16)}
+      </div>
+      <div class="h">Views per day</div>
+      ${chart(ana.rows.map(r=>[r.day,r.views]),"Daily views from the YouTube Analytics API","area")}`:""}
+
+      ${anaErr==="SESSION_EXPIRED"?`<div class="alert i"><b>Analytics sign-in expired.</b>
+        Browser sign-ins last an hour — tap <b>Link API</b> to sign in again. Public stats are unaffected.</div>`:""}
+      ${anaErr&&anaErr!=="SESSION_EXPIRED"?`<div class="alert e"><b>Linked, but the Analytics request failed.</b><br>${esc(anaErr)}
+        <br>If it mentions permissions, re-link with the account that owns this channel.</div>`:""}
+
+      <div class="h" style="margin-top:${ana?"30px":"4px"}">Uploads <span class="n">public data · ${esc(b.label)}</span></div>
+      <div class="stats">
+        ${statCard("Uploads",String(inr.length),`of ${vids.length} fetched${vids.length>=DEEP_MAX?` · cap ${DEEP_MAX}`:""}`,"",0)}
+        ${statCard("Views on them",kf(sum),"lifetime views of these videos","",.04)}
+        ${statCard("Avg per upload",avg===null?"—":kf(avg),`${wv.length} counted`,"",.08)}
+        ${ana?"":statCard("Views gained",gained===null?"—":kf(gained),gained===null?"needs local history":`since ${base.key}`,"",.12)}
+        ${statCard("Subscribers",kf(c.subs),prev?.channels?.[label]?trendEl(c.subs,prev.channels[label].subs)+` vs ${prev.key}`:"tracking starts today","",.16)}
+      </div>
+
+      ${(!ana&&!linked(label))?`<div class="alert i" style="margin-top:14px">
+        <b>Want real per-day views, watch time and retention here?</b> The public API only reports lifetime
+        totals, so “views gained” is estimated from this app's own saved history. Link the channel once and
+        those numbers come straight from YouTube. ${SERVED?"Press <b>Link API</b> above.":"Open the desktop app first."}</div>`:""}
+
+      <div class="h">Upload cadence</div>
+      ${chart(upPairs,"Uploads per day in this range","bar")}
+
+      <div class="h">Videos <span class="n">${rows.length} in range${best?` · best ${kf(best.views)}`:""}</span></div>
+      <div style="margin-bottom:12px"><div class="srch" style="max-width:320px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+        <input type="search" id="q" placeholder="Search in this channel…" value="${esc(Q)}"></div></div>
+      ${table(rows,prev,maxPD,best,false)}
+      <div class="note"><b>Range</b> filters by <b>upload date</b> — always exact.<br>${foot(hist,prev)}</div>`;
+
+    $("#lk").onclick=()=>openSetup(label);
+    $("#rng").querySelectorAll("button").forEach(b2=>b2.onclick=()=>{RANGE.k=b2.dataset.r;draw();});
+    const cf=$("#cf"),ct=$("#ct");
+    if(cf)cf.onchange=e=>{RANGE.from=e.target.value;draw();};
+    if(ct)ct.onchange=e=>{RANGE.to=e.target.value;draw();};
+    wireCommon(draw);
+  };
+  draw();
+}
+function wireCommon(rerender){
+  $$("#page th[data-k]").forEach(th=>th.onclick=()=>{
+    const k=th.dataset.k;SORT={k,dir:SORT.k===k?-SORT.dir:-1};rerender();});
+  const q=$("#q");
+  if(q)q.oninput=e=>{Q=e.target.value.trim().toLowerCase();rerender();
+    const el=$("#q");el.focus();el.setSelectionRange(99,99);};
+  wireCharts();
+}
+
+/* ══ modal ══ */
+const closeModal=()=>$("#modalHost").innerHTML="";
+function openSetup(forCh){
+  const c=forCh?ST.channels.find(x=>x.label===forCh):null;
+  const lk=forCh?LINK.linked?.[forCh]:null;
+  const ru=LINK.redirect_uri||"http://localhost:8756/oauth2callback";
+  const origin=location.origin;
+  const nLinked=Object.keys(LINK.linked||{}).length;
+
+  const keyBlock=`
+    <div class="fld"><label>YouTube Data API key
+      <span style="text-transform:none;letter-spacing:0;color:var(--faint)">&mdash; powers every number here</span></label>
+      <input type="text" id="ak" placeholder="AIza&hellip;" value="${esc(localStorage.getItem(KEY_STORE)||"")}"></div>
+    <div class="mrow" style="margin-top:0">
+      <button class="btn" id="saveKey">Save key</button>
+      <button class="btn" id="resetKey">Use default</button>
+      <span id="keyMsg" class="note" style="margin:0"></span></div>`;
+
+  let body;
+  if(MODE==="file"){
+    body=`${keyBlock}
+      <div class="alert e" style="margin-top:18px"><b>Open the app to link channels.</b>
+        Google won't sign in from a file. Use the Desktop app, or the hosted portal on your phone.</div>
+      <div class="mrow"><span class="grow"></span><button class="btn" id="close">Close</button></div>`;
+  }
+  else if(MODE==="hosted"){
+    body=`${keyBlock}
+      <div class="h" style="margin:22px 0 12px">Connect analytics <span class="n">one-time &middot; no secrets</span></div>
+      <p class="ld" style="margin-bottom:14px">This portal signs in straight from your browser, so there is
+        <b>no client secret anywhere</b> and nothing is kept on a server. A sign-in lasts one hour, then you
+        tap once more.</p>
+      <ol class="steps">
+        <li>Open <b>console.cloud.google.com</b> and pick or create a project.</li>
+        <li><b>APIs &amp; Services &rarr; Library</b> &mdash; enable <code>YouTube Data API v3</code> and
+          <code>YouTube Analytics API</code>.</li>
+        <li><b>OAuth consent screen</b> &rarr; External &rarr; fill in name and email &rarr;
+          <b>publish to production</b>.</li>
+        <li><b>Credentials &rarr; Create credentials &rarr; OAuth client ID &rarr; Web application.</b></li>
+        <li>Under <b>Authorised JavaScript origins</b> add exactly this:
+          <div class="cprow"><span style="flex:1">${esc(origin)}</span>
+            <button class="btn" id="cpOr">Copy</button></div>
+          Leave <b>Authorised redirect URIs</b> empty &mdash; this sign-in doesn't use one.</li>
+        <li>Create it, then paste the <b>Client ID</b> below. There is no secret to copy.</li>
+      </ol>
+      <div class="fld"><label>OAuth Client ID</label>
+        <input type="text" id="cid" placeholder="&hellip;apps.googleusercontent.com" value="${esc(gisCid())}"></div>
+      <div id="cfgMsg" class="note" style="margin-top:0"></div>
+      <div class="mrow">
+        <button class="btn pri" id="saveCid">Save Client ID</button>
+        ${forCh?`<button class="btn" id="doLink" ${gisCid()?"":"disabled"}>${lk?"Sign in again":"Link this channel"}</button>`:""}
+        ${forCh&&lk?`<button class="btn" id="unlink">Unlink</button>`:""}
+        <span class="grow"></span><button class="btn" id="close">Close</button></div>
+      ${forCh?`<div class="note">Sign in with the account that <b>owns</b> ${esc(c?.title||forCh)} &mdash;
+        analytics are owner-only.${lk?`<br><span class="ok">&check; Linked on ${esc(lk.at||"")}</span>`:""}</div>`
+        :`<div class="note">${nLinked?`<span class="ok">&check; Linked: ${Object.keys(LINK.linked).join(", ")}</span>`:"No channels linked yet."}</div>`}
+      <div class="note">A Client ID is not a secret. The access token stays in this browser tab and expires
+        in an hour &mdash; nothing is written to any server.</div>`;
+  }
+  else{
+    body=`${keyBlock}
+      <div class="h" style="margin:22px 0 12px">One-time OAuth setup</div>
+      <ol class="steps">
+        <li>Open <b>console.cloud.google.com</b>, sign in with <b>any</b> Google account, pick or create a project.</li>
+        <li><b>APIs &amp; Services &rarr; Library</b> &mdash; enable <code>YouTube Data API v3</code> and
+          <code>YouTube Analytics API</code>.</li>
+        <li><b>OAuth consent screen</b> &rarr; External &rarr; fill in name and email &rarr;
+          <b>publish to production</b> (otherwise the sign-in dies after 7 days).</li>
+        <li><b>Credentials &rarr; Create credentials &rarr; OAuth client ID &rarr; Web application.</b></li>
+        <li>Add this exact <b>Authorised redirect URI</b>:
+          <div class="cprow"><span style="flex:1">${esc(ru)}</span>
+            <button class="btn" id="cpRu">Copy</button></div></li>
+        <li>Create it, then paste the Client ID and secret below.</li>
+      </ol>
+      <div class="fld"><label>Client ID</label>
+        <input type="text" id="cid" placeholder="&hellip;apps.googleusercontent.com" value="${esc(LINK.client_id||"")}"></div>
+      <div class="fld"><label>Client secret</label>
+        <input type="password" id="cs" placeholder="GOCSPX-&hellip;"></div>
+      <div id="cfgMsg" class="note" style="margin-top:0"></div>
+      <div class="mrow">
+        <button class="btn pri" id="saveCfg">Save credentials</button>
+        ${forCh?`<button class="btn" id="doLink" ${LINK.configured?"":"disabled"}>${lk?"Re-link":"Link this channel"}</button>`:""}
+        ${forCh&&lk?`<button class="btn" id="unlink">Unlink</button>`:""}
+        <span class="grow"></span><button class="btn" id="close">Close</button></div>
+      ${forCh?`<div class="note">Sign in with the account that <b>owns</b> ${esc(c?.title||forCh)} &mdash;
+        analytics are owner-only.${lk?`<br><span class="ok">&check; Linked${lk.title?` as ${esc(lk.title)}`:""}${lk.at?` on ${esc(lk.at)}`:""}</span>`:""}</div>`
+        :`<div class="note">${nLinked?`<span class="ok">&check; Linked: ${Object.keys(LINK.linked).join(", ")}</span>`:"No channels linked yet."}</div>`}
+      <div class="note">Secrets stay on this computer in <code>link.json</code>.</div>`;
+  }
+
+  $("#modalHost").innerHTML=`<div class="ovl" id="ovl"><div class="mod">
+    <h3>${forCh?`Link ${esc(c?.title||forCh)}`:"API settings"}</h3>
+    <p class="ld">Everything here comes from YouTube's <b>public</b> data. Linking a channel adds its
+      <b>private analytics</b> &mdash; real views per day, watch time and retention. Link whenever you have
+      time; nothing breaks until then.</p>${body}</div></div>`;
+
+  $("#close").onclick=closeModal;
+  $("#ovl").onclick=e=>{if(e.target.id==="ovl")closeModal();};
+  $("#saveKey").onclick=()=>{
+    const v=$("#ak").value.trim();
+    v?localStorage.setItem(KEY_STORE,v):localStorage.removeItem(KEY_STORE);
+    toast("API key saved &mdash; reloading","g");closeModal();load();};
+  $("#resetKey").onclick=()=>{
+    localStorage.removeItem(KEY_STORE);
+    toast("Reverted to the built-in key","g");closeModal();load();};
+
+  const cp=(sel,text)=>{const b=$(sel);if(!b)return;
+    b.onclick=()=>{navigator.clipboard?.writeText(text);
+      b.textContent="Copied";setTimeout(()=>b.textContent="Copy",1300);};};
+  cp("#cpOr",origin); cp("#cpRu",ru);
+
+  if(MODE==="hosted"){
+    $("#saveCid").onclick=async()=>{
+      const id=$("#cid").value.trim();
+      if(!id){$("#cfgMsg").innerHTML='<span class="warn">Client ID is required.</span>';return;}
+      localStorage.setItem(GIS_CID,id);await linkStatus();
+      $("#cfgMsg").innerHTML='<span class="ok">&check; Saved &mdash; you can link channels now.</span>';
+      const d=$("#doLink");if(d)d.disabled=false;toast("Client ID saved","g");};
+    const dl=$("#doLink");if(dl)dl.onclick=()=>gisConnect(forCh);
+    const ul=$("#unlink");if(ul)ul.onclick=async()=>{
+      const m=gisLinked();delete m[forCh];localStorage.setItem(GIS_LNK,JSON.stringify(m));
+      const tk=gisTokens();delete tk[forCh];gisSave(tk);
+      await linkStatus();closeModal();render();toast("Channel unlinked");};
+  }
+  else if(MODE==="local"){
+    $("#saveCfg").onclick=async()=>{
+      const id=$("#cid").value.trim(),s=$("#cs").value.trim();
+      if(!id||!s){$("#cfgMsg").innerHTML='<span class="warn">Both fields are required.</span>';return;}
+      await fetch("/config",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({client_id:id,client_secret:s})});
+      await linkStatus();
+      $("#cfgMsg").innerHTML='<span class="ok">&check; Saved &mdash; you can link channels now.</span>';
+      const d=$("#doLink");if(d)d.disabled=false;toast("Credentials saved","g");};
+    const dl=$("#doLink");if(dl)dl.onclick=()=>location.href="/link?ch="+encodeURIComponent(forCh);
+    const ul=$("#unlink");if(ul)ul.onclick=async()=>{
+      await fetch("/unlink?ch="+encodeURIComponent(forCh));
+      await linkStatus();closeModal();render();toast("Channel unlinked");};
+  }
+}
+
+/* ══ palette ══ */
+function palette(){
+  const items=[{n:"Overview",g:""},...ST.channels.filter(c=>!c.dead).map(c=>({n:c.title||c.label,g:c.label,m:c.label}))];
+  let sel=0;
+  $("#modalHost").innerHTML=`<div class="pal" id="pal"><div class="palbox">
+    <input type="text" id="pq" placeholder="Jump to a channel…" autocomplete="off">
+    <div class="palist" id="pl"></div></div></div>`;
+  const paint=()=>{const q=$("#pq").value.toLowerCase();
+    const f=items.filter(i=>i.n.toLowerCase().includes(q)||(i.m||"").includes(q));
+    sel=Math.min(sel,Math.max(0,f.length-1));
+    $("#pl").innerHTML=f.length?f.map((i,k)=>`<div class="pitem ${k===sel?"sel":""}" data-g="${i.g}">
+      <span class="pn">${esc(i.n)}</span>${i.m?`<span class="pm">${i.m}</span>`:""}</div>`).join("")
+      :`<div class="blank" style="padding:22px">No match</div>`;
+    $$("#pl .pitem").forEach(el=>el.onclick=()=>{location.hash=el.dataset.g?"#/"+el.dataset.g:"";closeModal();});
+    return f;};
+  let cur=paint();
+  $("#pq").focus();
+  $("#pq").oninput=()=>{sel=0;cur=paint();};
+  $("#pq").onkeydown=e=>{
+    if(e.key==="ArrowDown"){e.preventDefault();sel=Math.min(sel+1,cur.length-1);paint();}
+    else if(e.key==="ArrowUp"){e.preventDefault();sel=Math.max(sel-1,0);paint();}
+    else if(e.key==="Enter"){const i=cur[sel];if(i){location.hash=i.g?"#/"+i.g:"";closeModal();}}
+    else if(e.key==="Escape")closeModal();};
+  $("#pal").onclick=e=>{if(e.target.id==="pal")closeModal();};
+}
+
+function render(){
+  sidebar();
+  const r=route();
+  if(r==="setup"){overview();openSetup(null);return;}
+  if(r&&ST.channels.some(c=>c.label===r))channelPage(r); else overview();
+}
+addEventListener("hashchange",()=>{Q="";render();scrollTo({top:0});});
+addEventListener("scroll",()=>$("#tbar").classList.toggle("stuck",scrollY>4),{passive:true});
+addEventListener("keydown",e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();palette();}
+  else if(e.key==="Escape")closeModal();
+  else if(e.key==="r"&&!e.ctrlKey&&!e.metaKey&&!/input|textarea/i.test(document.activeElement.tagName))load();});
+$("#hamb").onclick=()=>{$("#sb").classList.toggle("open");$("#scrim2").classList.toggle("on");};
+$("#scrim2").onclick=closeSb;
+$("#cmd").onclick=palette;
+$("#setup").onclick=()=>openSetup(null);
+$("#refresh").onclick=load;
+load();
+if(MODE==="hosted"&&"serviceWorker" in navigator)
+  addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+</script>
+</body>
+</html>
