@@ -929,7 +929,7 @@ function table(rows,prev,maxPD,best,showCh){
       <td><a class="vcell" href="https://www.youtube.com/watch?v=${v.id}" target="_blank" rel="noopener">
         ${v.thumb?`<img class="thumb" src="${esc(v.thumb)}" alt="" loading="lazy">`:`<span class="thumb"></span>`}
         <span class="vmeta"><span class="vtitle">${best&&v.id===best.id?'★ ':''}${esc(v.title)}</span>
-        <span class="vsub">${v.isNew?'<span class="tag">NEW</span>':""}${kf(v.views)} views <span style="opacity:.45">&middot;</span> ${kf(v.likes)} likes</span></span></a></td>
+        <span class="vsub">${v.isNew?'<span class="tag">NEW</span>':""}${kf(v.views)} views <span style="opacity:.45">&middot;</span> ${kf(v.likes)} ${v.likes===1?"like":"likes"}</span></span></a></td>
       <td style="color:var(--faint);white-space:nowrap">${ago(v.published)}</td>
       <td class="n"><b>${nf(v.views)}</b></td>
       <td class="n">${nf(v.perDay)}${v.perDay?`<div class="meter"><i style="width:${Math.max(3,v.perDay/maxPD*100)}%"></i></div>`:""}</td>
