@@ -1,0 +1,57 @@
+name: Sync channels and status
+
+# Keeps the portal in step with the automation repos on its own.
+#
+# It walks every tiktok-yt-automation-* repository, reads channels.yaml and the
+# per-channel SQLite database, resolves each YouTube channel from the most recent
+# upload, then publishes two files:
+#
+#   channels.enc  the channel list, AES-GCM encrypted — the portal decrypts it with
+#                 a key that only ever lives in the browser, so this public repo
+#                 never contains a channel ID
+#   status.json   terminated / alive per channel, keyed by SHA-256 for the same reason
+#
+# Add a channel to the automation and it appears in the portal within half an hour.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install --quiet pyyaml cryptography
+
+      - name: Discover channels, probe them, publish
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
+          YT_API_KEY: ${{ secrets.YT_API_KEY }}
+          ENC_KEY: ${{ secrets.PORTAL_ENC_KEY }}
+        run: python scripts/sync.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- channels.enc status.json; then
+            echo "nothing changed"
+          else
+            git add channels.enc status.json
+            git commit -m "chore: sync channels and status [skip ci]"
+            git push
+          fi
