@@ -335,6 +335,13 @@ code{background:#0a0d13;border:1px solid var(--line2);border-radius:5px;padding:
   .tbar .btn svg{width:19px;height:19px}
   .hamb{min-width:42px;justify-content:center}
 }
+@media(max-width:1000px){
+  /* narrow toolbar */
+  .crumb{flex:0 1 auto;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;display:block}
+  .crumb>*{display:inline}
+  .tbar .kbd{display:none}
+  .tbar .btn{flex-shrink:0}
+}
 </style>
 </head>
 <body>
