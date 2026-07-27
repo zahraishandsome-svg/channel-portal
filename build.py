@@ -137,24 +137,46 @@ r'''function setupScreen(){
         <div class="vl" style="font-size:19px">Add your configuration</div>
         <div class="ft" style="white-space:normal">This portal ships empty on purpose &mdash; nothing about
           your channels is stored in the app itself.</div></div></div>
-    <div class="alert i" style="max-width:620px">Open the <b>setup link</b> you were given and this fills in
-      automatically. Or paste the configuration below &mdash; it stays in this browser only.</div>
+    <div class="alert i" style="max-width:620px">On iPhone a home-screen app keeps its own storage, separate
+      from Safari &mdash; so a setup link you opened in Safari does not carry over. Paste it once here and this
+      app remembers it for good.</div>
     <div class="tbl" style="max-width:620px;padding:18px">
-      <div class="fld"><label>Configuration</label>
-        <textarea id="cfgIn" rows="7" placeholder='{"apiKey":"AIza…","encKey":"…"}'
+      <div class="fld"><label>Paste your setup link</label>
+        <textarea id="cfgIn" rows="5" placeholder="https://…/#setup=…&#10;&#10;(a plain {\"apiKey\":…} object works too)"
           style="width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;
                  color:var(--fg);padding:10px 12px;font:12px ui-monospace,monospace;resize:vertical"></textarea></div>
       <div class="mrow"><button class="btn pri" id="cfgSave">Save and load</button>
+        <button class="btn" id="cfgPaste">Paste from clipboard</button>
         <span id="cfgMsg" class="note" style="margin:0"></span></div></div>`;
+
+  const apply=raw=>{
+    raw=(raw||"").trim();
+    if(!raw) throw new Error("nothing pasted");
+    let cfg;
+    // accept the whole setup link, just the #setup= payload, or raw JSON — on a
+    // phone the link is the only one of the three that is easy to paste
+    const m=raw.match(/setup=([A-Za-z0-9+/=_-]+)/);
+    if(m){
+      cfg=JSON.parse(decodeURIComponent(escape(
+        atob(m[1].replace(/-/g,"+").replace(/_/g,"/")))));
+    }else if(raw.startsWith("{")){
+      cfg=JSON.parse(raw);
+    }else{
+      throw new Error("that doesn't look like a setup link");
+    }
+    if(!cfg.apiKey) throw new Error("this link has no API key in it");
+    localStorage.setItem(CFG_KEY,JSON.stringify(cfg));
+    localStorage.setItem(KEY_STORE,cfg.apiKey);
+    if(Array.isArray(cfg.channels)) CHANNELS=cfg.channels;
+    toast("Saved &mdash; loading your channels","g"); load();
+  };
   $("#cfgSave").onclick=()=>{
-    try{
-      const cfg=JSON.parse($("#cfgIn").value.trim());
-      if(!cfg.apiKey) throw new Error("apiKey is required");
-      localStorage.setItem(CFG_KEY,JSON.stringify(cfg));
-      localStorage.setItem(KEY_STORE,cfg.apiKey);
-      if(Array.isArray(cfg.channels)) CHANNELS=cfg.channels;
-      toast("Saved &mdash; loading your channels","g"); load();
-    }catch(e){ $("#cfgMsg").innerHTML='<span class="warn">'+esc(e.message)+'</span>'; }
+    try{ apply($("#cfgIn").value); }
+    catch(e){ $("#cfgMsg").innerHTML='<span class="warn">'+esc(e.message)+'</span>'; }
+  };
+  $("#cfgPaste").onclick=async()=>{
+    try{ const txt=await navigator.clipboard.readText(); $("#cfgIn").value=txt; apply(txt); }
+    catch(e){ $("#cfgMsg").innerHTML='<span class="warn">'+esc(e.message||"clipboard blocked — paste manually")+'</span>'; }
   };
 }
 
