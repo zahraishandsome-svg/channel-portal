@@ -1,7 +1,7 @@
 {
-  "name": "Channel Analytics",
-  "short_name": "Channels",
-  "description": "Live stats for every YouTube channel",
+  "name": "Million Dollars App",
+  "short_name": "Million Dollars",
+  "description": "Live stats for every channel",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

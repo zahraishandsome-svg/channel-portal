@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<title>Channels — Analytics</title>
+<title>Million Dollars App</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#08090c">
 <link rel="icon" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Channels">
+<meta name="apple-mobile-web-app-title" content="Million Dollars">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root{
@@ -52,9 +52,13 @@ button,input{font-family:inherit}
 .sb-head{padding:18px 18px 14px;border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:10px}
 .mark{width:30px;height:30px;border-radius:9px;flex-shrink:0;display:grid;place-items:center;
-  background:linear-gradient(140deg,#4d8dff,#8b5cf6);box-shadow:0 3px 12px -4px rgba(77,141,255,.7)}
-.mark svg{width:15px;height:15px;fill:#fff}
-.brand h1{margin:0;font-size:14.5px;font-weight:620;letter-spacing:-.2px}
+  background:linear-gradient(160deg,#34c77b,#0f7a48);box-shadow:0 3px 12px -4px rgba(23,138,83,.7)}
+.mark svg{width:21px;height:21px}
+  .brand h1{margin:0;font-size:14.5px;font-weight:620;letter-spacing:-.2px}
+  .wm{display:flex;align-items:baseline;gap:5px;white-space:nowrap}
+  .wm span{font-size:9.5px;font-weight:750;letter-spacing:1px;text-transform:uppercase;
+    color:#4ede9a;background:rgba(52,199,123,.14);border:1px solid rgba(52,199,123,.32);
+    border-radius:5px;padding:1px 5px;transform:translateY(-1px)}
 .brand .sub{font-size:11px;color:var(--faint);margin-top:-1px}
 .sb-scroll{flex:1;overflow-y:auto;padding:12px 10px}
 .sb-lbl{font-size:10px;font-weight:680;letter-spacing:.9px;text-transform:uppercase;color:var(--faint);
@@ -313,8 +317,16 @@ code{background:#0a0d13;border:1px solid var(--line2);border-radius:5px;padding:
   <aside class="sb" id="sb">
     <div class="sb-head">
       <div class="brand">
-        <div class="mark"><svg viewBox="0 0 24 24"><path d="M10 16.5v-9l6 4.5-6 4.5zM12 2a10 10 0 100 20 10 10 0 000-20z"/></svg></div>
-        <div><h1>Channels</h1><div class="sub" id="sbSub">analytics</div></div>
+        <div class="mark"><svg viewBox="0 0 32 32" fill="none">
+          <rect x="6.5" y="12.5" width="21" height="12" rx="2.6" fill="#bdeacf" opacity=".55"/>
+          <rect x="5"   y="10.5" width="21" height="12" rx="2.6" fill="#d8f6e4" opacity=".8"/>
+          <rect x="3.5" y="8.5"  width="21" height="12" rx="2.6" fill="#f1fff7"/>
+          <circle cx="14" cy="14.5" r="3.5" stroke="#2f9e68" stroke-width="1.3"/>
+          <text x="14" y="17.4" text-anchor="middle" font-size="7" font-weight="900"
+                font-family="Arial Black,Arial,sans-serif" fill="#1f8a56">$</text>
+        </svg></div>
+        <div><h1 class="wm">Million&nbsp;Dollars<span>App</span></h1>
+          <div class="sub" id="sbSub">analytics</div></div>
       </div>
     </div>
     <div class="sb-scroll" id="sbScroll"></div>
@@ -352,8 +364,8 @@ let CHANNELS=[];
 const CFG_KEY="yt_portal_config";
 
 /** Config never ships inside this file. It arrives once per device through a setup
-    link (#setup=<base64 json>) or the setup screen, and then lives in this browser's
-    localStorage only — the URL fragment is never sent to the server. */
+    link (#setup=<base64 json>) or the setup screen, then lives in this browser's
+    localStorage only — a URL fragment is never sent to the server. */
 function loadConfig(){
   const m=location.hash.match(/setup=([A-Za-z0-9+/=_-]+)/);
   if(m){
@@ -374,9 +386,9 @@ function loadConfig(){
   }catch{ return null; }
 }
 
-/** The scheduled workflow walks the automation repos and publishes the current
-    channel list, AES-GCM encrypted. Decrypting it here means a channel added to the
-    automation shows up on its own — and the public file still holds no IDs. */
+/** A scheduled workflow walks the automation repos and publishes the current channel
+    list, AES-GCM encrypted. Decrypting it here means a channel added to the automation
+    turns up on its own, and the published file still holds no identifiers. */
 async function syncChannels(cfg){
   const b64=cfg?.encKey; if(!b64) return false;
   try{
@@ -405,7 +417,7 @@ const HIST_KEY="yt_dash_history_v2", HIST_DAYS=120;
 const RANGES=[["1","24h"],["3","3d"],["7","7d"],["30","30d"],["90","3mo"],["all","All"],["custom","Custom"]];
 /* Three ways this page runs:
      local  — the desktop app on :8756 (has /status /link /analytics /probe)
-     hosted — deployed to Vercel (has /api/probe; signs in through Google in-browser)
+     hosted — GitHub Pages; probes and signs in without any server of ours
      file   — opened straight off disk; public stats only */
 const MODE = location.port==="8756" ? "local"
            : location.protocol.startsWith("http") ? "hosted" : "file";
@@ -496,8 +508,8 @@ async function linkStatus(){
 }
 
 /** Browser sign-in via Google Identity Services. Google hands this tab a one-hour
-    access token directly: there is no client secret anywhere and the token never
-    leaves the device. */
+    access token directly: no client secret exists and the token never leaves the
+    device. */
 function gisConnect(label){
   const cid=gisCid();
   if(!cid){toast("Add your OAuth Client ID first","r");return;}
@@ -532,7 +544,7 @@ function setupScreen(){
       automatically. Or paste the configuration below &mdash; it stays in this browser only.</div>
     <div class="tbl" style="max-width:620px;padding:18px">
       <div class="fld"><label>Configuration</label>
-        <textarea id="cfgIn" rows="7" placeholder='{"apiKey":"AIza…","encKey":"…","channels":[]}'
+        <textarea id="cfgIn" rows="7" placeholder='{"apiKey":"AIza…","encKey":"…"}'
           style="width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;
                  color:var(--fg);padding:10px 12px;font:12px ui-monospace,monospace;resize:vertical"></textarea></div>
       <div class="mrow"><button class="btn pri" id="cfgSave">Save and load</button>
@@ -550,9 +562,11 @@ function setupScreen(){
 }
 
 async function load(){
-  const cfg=loadConfig();
-  await syncChannels(cfg);
-  if(!CHANNELS.length){ beat("err","setup needed"); setupScreen(); return; }
+  if(MODE!=="local"){
+    const cfg=loadConfig();
+    await syncChannels(cfg);
+    if(!CHANNELS.length){ beat("err","setup needed"); setupScreen(); return; }
+  }
   const b=$("#refresh");b.disabled=true;beat("busy","syncing");
   await linkStatus();
   const errors=[];let items;
@@ -599,11 +613,8 @@ async function probeDead(){
   if(gone.length) toast(`<b>${gone.map(c=>c.label).join(", ")}</b> is no longer on YouTube`,"r");
 }
 
-/** Ask the serverless probe first — it reads the real channel page, so it can say
-    "terminated" with certainty. If that isn't reachable, fall back to a pure Data
-    API test that still separates "gone" from "alive but not indexed yet". */
 /** The scheduled workflow publishes status.json keyed by SHA-256 of the channel ID,
-    so this public file still reveals nothing. It is the only source that can say
+    so the published file still reveals nothing. It is the only source that can say
     "terminated" with certainty. */
 let STATUS_MAP=null;
 async function loadStatusMap(){
@@ -622,26 +633,25 @@ async function probeOne(c){
     const hit=(await loadStatusMap())[await sha256hex(c.id)];
     if(hit?.status && hit.status!=="unknown") return hit;
   }catch{}
-  if(MODE!=="file"){
-    const url = MODE==="local" ? "/probe?id=" : "/api/probe?id=";
+  if(MODE==="local"){
     try{
-      const r=await fetch(url+encodeURIComponent(c.id));
+      const r=await fetch("/probe?id="+encodeURIComponent(c.id));
       if(r.ok){const j=await r.json(); if(j.status&&j.status!=="unknown") return j;}
     }catch{}
   }
   return apiProbe(c);
 }
 
-/** No server required. A channel's uploads playlist is "UU"+id. If the channel is
-    gone that playlist 404s; if the channel is merely un-indexed it still works. */
+/** Last resort, no extra service required. A channel's uploads playlist is "UU"+id:
+    it 404s once the channel is gone but still works while the channel is merely
+    too new for the Data API to have indexed. */
 async function apiProbe(c){
   try{
     const r=await api("playlistItems",{part:"snippet",playlistId:"UU"+c.id.slice(2),maxResults:"1"});
-    const it=(r.items||[])[0];
-    return {status:"indexing",title:it?.snippet?.channelTitle||"",via:"api"};
+    return {status:"indexing",title:(r.items||[])[0]?.snippet?.channelTitle||""};
   }catch(e){
-    if(e.status===404||e.reason==="playlistNotFound") return {status:"gone",title:"",via:"api"};
-    return {status:"unknown",title:"",via:"api"};
+    if(e.status===404||e.reason==="playlistNotFound") return {status:"gone",title:""};
+    return {status:"unknown",title:""};
   }
 }
 
@@ -1089,7 +1099,7 @@ function openSetup(forCh){
   if(MODE==="file"){
     body=`${keyBlock}
       <div class="alert e" style="margin-top:18px"><b>Open the app to link channels.</b>
-        Google won't sign in from a file. Use the Desktop app, or the hosted portal on your phone.</div>
+        Google won't sign in from a file. Use the desktop app, or the portal on your phone.</div>
       <div class="mrow"><span class="grow"></span><button class="btn" id="close">Close</button></div>`;
   }
   else if(MODE==="hosted"){

@@ -1,0 +1,137 @@
+function openSetup(forCh){
+  const c=forCh?ST.channels.find(x=>x.label===forCh):null;
+  const lk=forCh?LINK.linked?.[forCh]:null;
+  const ru=LINK.redirect_uri||"http://localhost:8756/oauth2callback";
+  const origin=location.origin;
+  const nLinked=Object.keys(LINK.linked||{}).length;
+
+  const keyBlock=`
+    <div class="fld"><label>YouTube Data API key
+      <span style="text-transform:none;letter-spacing:0;color:var(--faint)">&mdash; powers every number here</span></label>
+      <input type="text" id="ak" placeholder="AIza&hellip;" value="${esc(localStorage.getItem(KEY_STORE)||"")}"></div>
+    <div class="mrow" style="margin-top:0">
+      <button class="btn" id="saveKey">Save key</button>
+      <button class="btn" id="resetKey">Use default</button>
+      <span id="keyMsg" class="note" style="margin:0"></span></div>`;
+
+  let body;
+  if(MODE==="file"){
+    body=`${keyBlock}
+      <div class="alert e" style="margin-top:18px"><b>Open the app to link channels.</b>
+        Google won't sign in from a file. Use the desktop app, or the portal on your phone.</div>
+      <div class="mrow"><span class="grow"></span><button class="btn" id="close">Close</button></div>`;
+  }
+  else if(MODE==="hosted"){
+    body=`${keyBlock}
+      <div class="h" style="margin:22px 0 12px">Connect analytics <span class="n">one-time &middot; no secrets</span></div>
+      <p class="ld" style="margin-bottom:14px">This portal signs in straight from your browser, so there is
+        <b>no client secret anywhere</b> and nothing is kept on a server. A sign-in lasts one hour, then you
+        tap once more.</p>
+      <ol class="steps">
+        <li>Open <b>console.cloud.google.com</b> and pick or create a project.</li>
+        <li><b>APIs &amp; Services &rarr; Library</b> &mdash; enable <code>YouTube Data API v3</code> and
+          <code>YouTube Analytics API</code>.</li>
+        <li><b>OAuth consent screen</b> &rarr; External &rarr; fill in name and email &rarr;
+          <b>publish to production</b>.</li>
+        <li><b>Credentials &rarr; Create credentials &rarr; OAuth client ID &rarr; Web application.</b></li>
+        <li>Under <b>Authorised JavaScript origins</b> add exactly this:
+          <div class="cprow"><span style="flex:1">${esc(origin)}</span>
+            <button class="btn" id="cpOr">Copy</button></div>
+          Leave <b>Authorised redirect URIs</b> empty &mdash; this sign-in doesn't use one.</li>
+        <li>Create it, then paste the <b>Client ID</b> below. There is no secret to copy.</li>
+      </ol>
+      <div class="fld"><label>OAuth Client ID</label>
+        <input type="text" id="cid" placeholder="&hellip;apps.googleusercontent.com" value="${esc(gisCid())}"></div>
+      <div id="cfgMsg" class="note" style="margin-top:0"></div>
+      <div class="mrow">
+        <button class="btn pri" id="saveCid">Save Client ID</button>
+        ${forCh?`<button class="btn" id="doLink" ${gisCid()?"":"disabled"}>${lk?"Sign in again":"Link this channel"}</button>`:""}
+        ${forCh&&lk?`<button class="btn" id="unlink">Unlink</button>`:""}
+        <span class="grow"></span><button class="btn" id="close">Close</button></div>
+      ${forCh?`<div class="note">Sign in with the account that <b>owns</b> ${esc(c?.title||forCh)} &mdash;
+        analytics are owner-only.${lk?`<br><span class="ok">&check; Linked on ${esc(lk.at||"")}</span>`:""}</div>`
+        :`<div class="note">${nLinked?`<span class="ok">&check; Linked: ${Object.keys(LINK.linked).join(", ")}</span>`:"No channels linked yet."}</div>`}
+      <div class="note">A Client ID is not a secret. The access token stays in this browser tab and expires
+        in an hour &mdash; nothing is written to any server.</div>`;
+  }
+  else{
+    body=`${keyBlock}
+      <div class="h" style="margin:22px 0 12px">One-time OAuth setup</div>
+      <ol class="steps">
+        <li>Open <b>console.cloud.google.com</b>, sign in with <b>any</b> Google account, pick or create a project.</li>
+        <li><b>APIs &amp; Services &rarr; Library</b> &mdash; enable <code>YouTube Data API v3</code> and
+          <code>YouTube Analytics API</code>.</li>
+        <li><b>OAuth consent screen</b> &rarr; External &rarr; fill in name and email &rarr;
+          <b>publish to production</b> (otherwise the sign-in dies after 7 days).</li>
+        <li><b>Credentials &rarr; Create credentials &rarr; OAuth client ID &rarr; Web application.</b></li>
+        <li>Add this exact <b>Authorised redirect URI</b>:
+          <div class="cprow"><span style="flex:1">${esc(ru)}</span>
+            <button class="btn" id="cpRu">Copy</button></div></li>
+        <li>Create it, then paste the Client ID and secret below.</li>
+      </ol>
+      <div class="fld"><label>Client ID</label>
+        <input type="text" id="cid" placeholder="&hellip;apps.googleusercontent.com" value="${esc(LINK.client_id||"")}"></div>
+      <div class="fld"><label>Client secret</label>
+        <input type="password" id="cs" placeholder="GOCSPX-&hellip;"></div>
+      <div id="cfgMsg" class="note" style="margin-top:0"></div>
+      <div class="mrow">
+        <button class="btn pri" id="saveCfg">Save credentials</button>
+        ${forCh?`<button class="btn" id="doLink" ${LINK.configured?"":"disabled"}>${lk?"Re-link":"Link this channel"}</button>`:""}
+        ${forCh&&lk?`<button class="btn" id="unlink">Unlink</button>`:""}
+        <span class="grow"></span><button class="btn" id="close">Close</button></div>
+      ${forCh?`<div class="note">Sign in with the account that <b>owns</b> ${esc(c?.title||forCh)} &mdash;
+        analytics are owner-only.${lk?`<br><span class="ok">&check; Linked${lk.title?` as ${esc(lk.title)}`:""}${lk.at?` on ${esc(lk.at)}`:""}</span>`:""}</div>`
+        :`<div class="note">${nLinked?`<span class="ok">&check; Linked: ${Object.keys(LINK.linked).join(", ")}</span>`:"No channels linked yet."}</div>`}
+      <div class="note">Secrets stay on this computer in <code>link.json</code>.</div>`;
+  }
+
+  $("#modalHost").innerHTML=`<div class="ovl" id="ovl"><div class="mod">
+    <h3>${forCh?`Link ${esc(c?.title||forCh)}`:"API settings"}</h3>
+    <p class="ld">Everything here comes from YouTube's <b>public</b> data. Linking a channel adds its
+      <b>private analytics</b> &mdash; real views per day, watch time and retention. Link whenever you have
+      time; nothing breaks until then.</p>${body}</div></div>`;
+
+  $("#close").onclick=closeModal;
+  $("#ovl").onclick=e=>{if(e.target.id==="ovl")closeModal();};
+  $("#saveKey").onclick=()=>{
+    const v=$("#ak").value.trim();
+    v?localStorage.setItem(KEY_STORE,v):localStorage.removeItem(KEY_STORE);
+    toast("API key saved &mdash; reloading","g");closeModal();load();};
+  $("#resetKey").onclick=()=>{
+    localStorage.removeItem(KEY_STORE);
+    toast("Reverted to the built-in key","g");closeModal();load();};
+
+  const cp=(sel,text)=>{const b=$(sel);if(!b)return;
+    b.onclick=()=>{navigator.clipboard?.writeText(text);
+      b.textContent="Copied";setTimeout(()=>b.textContent="Copy",1300);};};
+  cp("#cpOr",origin); cp("#cpRu",ru);
+
+  if(MODE==="hosted"){
+    $("#saveCid").onclick=async()=>{
+      const id=$("#cid").value.trim();
+      if(!id){$("#cfgMsg").innerHTML='<span class="warn">Client ID is required.</span>';return;}
+      localStorage.setItem(GIS_CID,id);await linkStatus();
+      $("#cfgMsg").innerHTML='<span class="ok">&check; Saved &mdash; you can link channels now.</span>';
+      const d=$("#doLink");if(d)d.disabled=false;toast("Client ID saved","g");};
+    const dl=$("#doLink");if(dl)dl.onclick=()=>gisConnect(forCh);
+    const ul=$("#unlink");if(ul)ul.onclick=async()=>{
+      const m=gisLinked();delete m[forCh];localStorage.setItem(GIS_LNK,JSON.stringify(m));
+      const tk=gisTokens();delete tk[forCh];gisSave(tk);
+      await linkStatus();closeModal();render();toast("Channel unlinked");};
+  }
+  else if(MODE==="local"){
+    $("#saveCfg").onclick=async()=>{
+      const id=$("#cid").value.trim(),s=$("#cs").value.trim();
+      if(!id||!s){$("#cfgMsg").innerHTML='<span class="warn">Both fields are required.</span>';return;}
+      await fetch("/config",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({client_id:id,client_secret:s})});
+      await linkStatus();
+      $("#cfgMsg").innerHTML='<span class="ok">&check; Saved &mdash; you can link channels now.</span>';
+      const d=$("#doLink");if(d)d.disabled=false;toast("Credentials saved","g");};
+    const dl=$("#doLink");if(dl)dl.onclick=()=>location.href="/link?ch="+encodeURIComponent(forCh);
+    const ul=$("#unlink");if(ul)ul.onclick=async()=>{
+      await fetch("/unlink?ch="+encodeURIComponent(forCh));
+      await linkStatus();closeModal();render();toast("Channel unlinked");};
+  }
+}
+
