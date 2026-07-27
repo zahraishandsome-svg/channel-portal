@@ -1,7 +1,7 @@
 // Caches only the app shell so the portal opens instantly and still shows its
 // interface with no connection. Stats are never cached — they must always be
 // live, so every API call goes straight to the network.
-const SHELL = "shell-v4";
+const SHELL = "shell-v5";
 const FILES = ["./", "index.html", "manifest.webmanifest",
                "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 

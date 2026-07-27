@@ -48,12 +48,9 @@ t = sub(t, "<title>Million Dollars App</title>",
 <meta name="apple-mobile-web-app-title" content="Million Dollars">
 <script src="https://accounts.google.com/gsi/client" async defer></script>""", "head")
 
-t = sub(t, ".tbar{position:sticky;top:0;z-index:40;",
-           ".tbar{position:sticky;top:0;z-index:40;padding-top:max(12px,env(safe-area-inset-top));",
-        "tbar safe-area")
-t = sub(t, ".page{padding:22px 24px 80px;max-width:1400px;width:100%}",
-           ".page{padding:22px 24px calc(80px + env(safe-area-inset-bottom));max-width:1400px;width:100%}",
-        "page safe-area")
+# Safe-area insets are not patched in here: they live at the END of the source
+# stylesheet, because the mobile media query re-sets .tbar's padding shorthand and
+# would wipe out anything injected further up.
 
 # ── run mode ──────────────────────────────────────────────────────────────
 t = sub(t, 'const SERVED=location.protocol.startsWith("http");',
