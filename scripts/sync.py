@@ -155,23 +155,59 @@ if not channels:
 
 
 # ── 4. is each one still on YouTube? ───────────────────────────────────────
-def probe(cid):
+def api_probe(cid):
+    """The reliable half: the uploads playlist is "UU" + the channel id, and it 404s
+    with playlistNotFound once the channel is gone, while a channel that merely has
+    not been indexed by the Data API yet still answers. Verified against both dead and
+    live channels — dead: channels.list 0 + playlistItems 404; live: 1 + OK."""
+    try:
+        yt("playlistItems", part="snippet", playlistId="UU" + cid[2:], maxResults=1)
+        return "alive"
+    except urllib.error.HTTPError as e:
+        try:
+            reason = json.loads(e.read())["error"]["errors"][0]["reason"]
+        except Exception:
+            reason = ""
+        return "gone" if e.code == 404 and reason == "playlistNotFound" else "unknown"
+    except Exception:
+        return "unknown"
+
+
+def page_probe(cid):
+    """The descriptive half — it can name the channel and spell out a termination, but
+    YouTube does not answer consistently: a terminated channel has come back from this
+    with a normal-looking page and a title, which is why it can no longer decide on its
+    own whether a channel is alive."""
     req = urllib.request.Request(f"https://www.youtube.com/channel/{cid}",
                                  headers={"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9"})
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
             html = r.read().decode("utf-8", "ignore")
     except urllib.error.HTTPError as e:
-        return {"status": "missing"} if e.code == 404 else {"status": "unknown"}
+        return ("missing", "") if e.code == 404 else ("unknown", "")
     except Exception:
-        return {"status": "unknown"}
+        return ("unknown", "")
     if "has been terminated" in html:
-        return {"status": "terminated"}
+        return ("terminated", "")
     i, j = html.find("<title>"), html.find("</title>")
     title = html[i + 7:j].replace(" - YouTube", "").strip() if 0 <= i < j else ""
-    if title and title.lower() != "youtube":
-        return {"status": "indexing", "title": title}
-    return {"status": "missing"}
+    return ("ok", title if title.lower() != "youtube" else "")
+
+
+def probe(cid):
+    api = api_probe(cid)
+    page, title = page_probe(cid)
+
+    if api == "gone":
+        # the channel is definitively off YouTube; the page says why when it can
+        return {"status": "terminated" if page == "terminated" else "gone"}
+    if page == "terminated":
+        return {"status": "terminated"}
+    if api == "alive":
+        return {"status": "indexing", "title": title} if title else {"status": "indexing"}
+    if page == "missing":
+        return {"status": "missing"}
+    return {"status": "unknown"}
 
 
 status = {}
