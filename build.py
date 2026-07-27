@@ -244,12 +244,6 @@ t = sub(t,
     '      missing:["NOT FOUND","b-off","No channel exists at this ID any more — deleted, or the ID in the dashboard is wrong."],\n'
     '      gone:["CHANNEL GONE","b-off","This channel is no longer on YouTube — terminated or deleted. Open it on YouTube to see which."],',
     "gone card")
-t = sub(t,
-    '  if(term.length) bits.push(`<b>${term.join(", ")} terminated by YouTube.</b> Uploads to ${term.length>1?"these channels":"this channel"} will fail until restored.`);',
-    '  if(term.length) bits.push(`<b>${term.join(", ")} terminated by YouTube.</b> Uploads to ${term.length>1?"these channels":"this channel"} will fail until restored.`);\n'
-    '  const gone=by("gone");\n'
-    '  if(gone.length) bits.push(`<b>${gone.join(", ")} is no longer on YouTube</b> — terminated or deleted. Uploads will fail.`);',
-    "gone alert")
 
 # ── sign-in with no client secret ─────────────────────────────────────────
 t = sub(t,

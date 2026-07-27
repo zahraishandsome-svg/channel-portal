@@ -880,7 +880,6 @@ function overview(){
     return (typeof A==="string"||typeof B==="string")?cmpv(String(A),String(B))*SORT.dir:cmpv(A??-1,B??-1)*SORT.dir;});
 
   $("#page").innerHTML=`
-    ${deadAlert()}
     ${!SERVED?`<div class="alert i"><b>Running from a file.</b> Launch <b>YT Dashboard</b> from your
       Desktop to enable per-channel API linking (real per-day views, watch time, retention).</div>`:""}
 
@@ -912,22 +911,6 @@ function overview(){
   wireCommon(overview);
   $("#chseg").querySelectorAll("button").forEach(b=>b.onclick=()=>{FILTER=b.dataset.ch||null;overview();});
   $$(".ch[data-go]").forEach(el=>el.onclick=()=>location.hash="#/"+el.dataset.go);
-}
-function deadAlert(){
-  const dead=ST.channels.filter(c=>c.dead);
-  if(!dead.length) return "";
-  const by=s=>dead.filter(c=>c.probe?.status===s).map(c=>c.label);
-  const term=by("terminated"), miss=by("missing"), idx=by("indexing");
-  const pending=dead.filter(c=>!c.probe).map(c=>c.label);
-  const bits=[];
-  if(term.length) bits.push(`<b>${term.join(", ")} terminated by YouTube.</b> Uploads to ${term.length>1?"these channels":"this channel"} will fail until restored.`);
-  const gone=by("gone");
-  if(gone.length) bits.push(`<b>${gone.join(", ")} is no longer on YouTube</b> — terminated or deleted. Uploads will fail.`);
-  if(miss.length) bits.push(`<b>${miss.join(", ")} not found</b> — deleted, or the channel ID is wrong.`);
-  if(idx.length) bits.push(`<b>${idx.join(", ")} is live but not indexed by the API yet.</b> Normal for a new channel; stats appear on their own.`);
-  if(pending.length) bits.push(`Checking ${pending.join(", ")}…`);
-  const bad=term.length||miss.length;
-  return `<div class="alert ${bad?"e":"i"}">${bits.join("<br>")}</div>`;
 }
 function statCard(lb,vl,ft,spk,delay){
   return `<div class="stat" style="animation-delay:${delay}s"><div class="lb">${lb}</div>
