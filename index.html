@@ -1009,7 +1009,8 @@ function channelCard(c,prev,top,i,hist){
     return `<div class="ch off" style="animation-delay:${dl}s">
       <div class="ch-top"><span class="ch-av"></span>
         <div class="ch-id"><div class="ch-nm">${esc(name)}</div>
-          <div class="ch-hd">${c.label} · ${esc(c.tiktok)}</div></div>
+          <div class="ch-hd">${c.label} · ${esc(c.tiktok)}</div>
+          ${mailHTML(c)}</div>
         <span class="badge ${cls}">${txt}</span></div>
       <div class="note" style="margin:0">${msg}</div>
       <div class="ch-foot"><span class="tiny">
@@ -1151,10 +1152,10 @@ function missHTML(c){
    A deployed fix is worthless if the page never re-runs. The build stamps its id here
    and publishes the same id in version.json; when the app returns to the foreground it
    compares the two and reloads once if the deploy moved on. */
-const BUILD_ID="dc8200e7ccef";
+const BUILD_ID="aca0f9ac5166";
 let updateChecking=false;
 async function checkForUpdate(){
-  if(!SERVED||BUILD_ID==="dc8200e7ccef"||updateChecking) return;
+  if(!SERVED||BUILD_ID==="aca0f9ac5166"||updateChecking) return;
   updateChecking=true;
   try{
     const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"});
