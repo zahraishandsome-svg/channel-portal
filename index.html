@@ -1133,6 +1133,32 @@ function missHTML(c){
    Lifetime totals hide how a channel is doing now, so the default is the last 90
    days. Only views/videos/average can be scoped: subscriber counts have no public
    history, so they stay lifetime whichever scope is picked. */
+/* ══ self-update ══
+   A deployed fix is worthless if the page never re-runs. The build stamps its id here
+   and publishes the same id in version.json; when the app returns to the foreground it
+   compares the two and reloads once if the deploy moved on. */
+const BUILD_ID="41d50490eff8";
+let updateChecking=false;
+async function checkForUpdate(){
+  if(!SERVED||BUILD_ID==="41d50490eff8"||updateChecking) return;
+  updateChecking=true;
+  try{
+    const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"});
+    if(r.ok){
+      const {build}=await r.json();
+      if(build&&build!==BUILD_ID&&sessionStorage.getItem("mda_reloaded")!==build){
+        sessionStorage.setItem("mda_reloaded",build);   /* never loop on a bad deploy */
+        location.reload();
+        return;
+      }
+    }
+  }catch{}
+  updateChecking=false;
+}
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) checkForUpdate(); });
+addEventListener("focus",checkForUpdate);
+setInterval(checkForUpdate,6e5);
+
 let DATA_AS_OF=null;    /* when sync last published, ms */
 const SCOPE_KEY="yt_dash_scope";
 let SCOPE=localStorage.getItem(SCOPE_KEY)||"90";

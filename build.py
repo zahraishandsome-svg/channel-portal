@@ -343,5 +343,15 @@ assert "AIzaSy" not in t, "an API key leaked into the published build"
 assert "UCfK4nBw" not in t, "a channel id leaked into the published build"
 assert "Million Dollars" in t, "branding missing"
 
+# ── stamp the build so a running page can notice it is out of date ────────
+import json
+import hashlib
+
+build_id = hashlib.sha1(t.encode("utf-8")).hexdigest()[:12]
+t = t.replace('"__BUILD__"', f'"{build_id}"')
+assert "__BUILD__" not in t, "build id placeholder survived"
+
 OUT.write_text(t, encoding="utf-8", newline="\n")
-print(f"built {OUT} — {len(t)} chars, no secrets embedded")
+(OUT.parent / "version.json").write_text(
+    json.dumps({"build": build_id}) + "\n", encoding="utf-8", newline="\n")
+print(f"built {OUT} — {len(t)} chars, no secrets embedded, build {build_id}")
