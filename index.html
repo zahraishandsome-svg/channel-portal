@@ -931,9 +931,11 @@ function overview(){
     ?live.reduce((a,c)=>a+(prev.channels?.[c.label]?.views??c.views),0):null;
   const today=videos.filter(v=>ageD(v.published)<1);
   const best=[...videos.filter(v=>v.views!==null&&ageD(v.published)<2)].sort((a,b)=>b.views-a.views)[0];
-  const rankVal=c=>SCOPE==="all"?(c.avg??-1):(scopeStats(c).avg??-1);
+  /* Rank on total views in the chosen scope — the biggest channel first, not the one
+     with the best per-video average off a handful of uploads. */
+  const rankVal=c=>SCOPE==="all"?(c.views??-1):(scopeStats(c).views??-1);
   const ranked=[...channels].sort((a,b)=>a.dead!==b.dead?(a.dead?1:-1):rankVal(b)-rankVal(a));
-  const top=ranked.find(c=>!c.dead&&c.avg!==null)?.label;
+  const top=ranked.find(c=>!c.dead&&rankVal(c)>0)?.label;
   const days=Object.keys(hist.days).sort();
   const totSeries=days.map(d=>Object.values(hist.days[d].channels||{}).reduce((a,x)=>a+(x.views||0),0)).filter(Boolean);
   const maxPD=Math.max(1,...videos.map(v=>v.perDay||0));
@@ -963,7 +965,9 @@ function overview(){
                  Object.keys(LINK.linked||{}).length?`${Object.keys(LINK.linked).length} linked to API`:"public data",'',.16)}
     </div>
 
-    <div class="h">Channels <span class="n">ranked by average views on recent uploads</span></div>
+    <div class="h">Channels <span class="n">${SCOPE==="all"
+      ?"ranked by total views"
+      :"ranked by views in the last 3 months"}</span></div>
     <div class="cards">${ranked.map((c,i)=>channelCard(c,prev,top,i,hist)).join("")}</div>
 
     <div class="h">Recent uploads <span class="n">newest first · ${PER_CHANNEL} per channel</span></div>
@@ -1152,10 +1156,10 @@ function missHTML(c){
    A deployed fix is worthless if the page never re-runs. The build stamps its id here
    and publishes the same id in version.json; when the app returns to the foreground it
    compares the two and reloads once if the deploy moved on. */
-const BUILD_ID="aca0f9ac5166";
+const BUILD_ID="3d8c205142fb";
 let updateChecking=false;
 async function checkForUpdate(){
-  if(!SERVED||BUILD_ID==="aca0f9ac5166"||updateChecking) return;
+  if(!SERVED||BUILD_ID==="3d8c205142fb"||updateChecking) return;
   updateChecking=true;
   try{
     const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"});
