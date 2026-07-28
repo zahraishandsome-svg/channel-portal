@@ -479,6 +479,7 @@ async function syncChannels(cfg){
       raw(b64.replace(/-/g,"+").replace(/_/g,"/")),"AES-GCM",false,["decrypt"]);
     const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:raw(env.nonce)},key,raw(env.data));
     const list=JSON.parse(new TextDecoder().decode(plain)).channels;
+    if(env.updated) DATA_AS_OF=Date.parse(env.updated)||null;
     if(Array.isArray(list)&&list.length){
       const before=CHANNELS.map(c=>c.label).join(",");
       CHANNELS=list;
@@ -1088,17 +1089,33 @@ setInterval(tickSchedules,30000);
 /* ══ upload misses ══
    sync publishes {expected, uploaded, issues[]} per channel for the current UTC day.
    A slot only counts as missed once its scheduled time has actually passed. */
+/* A slot is only judged once its retry has also had time to run AND the published
+   report is new enough to have seen the outcome. DATA_AS_OF is when sync last ran;
+   without it (desktop build) fall back to the clock alone. */
+const RETRY_GRACE_MIN=100;      /* slot + 90m retry + a few minutes to upload */
+function slotInstantUTC(hhmm){
+  const [h,m]=hhmm.split(":").map(Number), n=new Date();
+  return Date.UTC(n.getUTCFullYear(),n.getUTCMonth(),n.getUTCDate(),h,m,0,0);
+}
+function slotSettled(hhmm){
+  const cut=slotInstantUTC(hhmm)+RETRY_GRACE_MIN*6e4;
+  const asOf=DATA_AS_OF||Date.now();
+  return Date.now()>=cut && asOf>=cut;
+}
 function slotsDueToday(slots){
   if(!slots||!slots.length) return 0;
-  const n=new Date();
-  const mins=n.getUTCHours()*60+n.getUTCMinutes();
-  return slots.filter(s=>{const [h,m]=s.split(":").map(Number); return h*60+m<=mins;}).length;
+  return slots.filter(slotSettled).length;
 }
 function missHTML(c){
   const t=c.today; if(!t) return "";
-  const due=Math.min(slotsDueToday(c.slots), t.expected||0);
+  const slots=c.slots||[];
+  const due=Math.min(slotsDueToday(slots), t.expected||0);
   const missed=Math.max(0, due-(t.uploaded||0));
-  const issues=t.issues||[];
+  /* an issue on a slot whose retry is still pending is not a miss yet */
+  const issues=(t.issues||[]).filter(i=>{
+    const s=slots[(i.slot||1)-1];
+    return s?slotSettled(s):true;
+  });
   if(!missed && !issues.length) return "";
   const why=issues.length
     ? [...new Set(issues.map(i=>i.why))].join(" · ")
@@ -1116,6 +1133,7 @@ function missHTML(c){
    Lifetime totals hide how a channel is doing now, so the default is the last 90
    days. Only views/videos/average can be scoped: subscriber counts have no public
    history, so they stay lifetime whichever scope is picked. */
+let DATA_AS_OF=null;    /* when sync last published, ms */
 const SCOPE_KEY="yt_dash_scope";
 let SCOPE=localStorage.getItem(SCOPE_KEY)||"90";
 const SCOPE_DAYS=90;

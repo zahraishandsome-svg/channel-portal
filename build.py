@@ -110,6 +110,7 @@ async function syncChannels(cfg){
       raw(b64.replace(/-/g,"+").replace(/_/g,"/")),"AES-GCM",false,["decrypt"]);
     const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:raw(env.nonce)},key,raw(env.data));
     const list=JSON.parse(new TextDecoder().decode(plain)).channels;
+    if(env.updated) DATA_AS_OF=Date.parse(env.updated)||null;
     if(Array.isArray(list)&&list.length){
       const before=CHANNELS.map(c=>c.label).join(",");
       CHANNELS=list;
