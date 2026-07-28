@@ -77,7 +77,12 @@ for repo in repos:
             continue
         if not (ch.get("tiktok_username") or "").strip():
             continue          # an emptied slot waiting for a new channel
-        wanted[ch["id"]] = "@" + ch["tiktok_username"]
+        # Publish the upload schedule so the portal can count down to the next one.
+        # slot_publish_times_utc is {slot_number: "HH:MM"}; keep it ordered by slot.
+        times = ch.get("slot_publish_times_utc") or {}
+        slots = [str(times[k]).strip() for k in sorted(times)
+                 if re.fullmatch(r"\d{1,2}:\d{2}", str(times[k]).strip())]
+        wanted[ch["id"]] = {"tiktok": "@" + ch["tiktok_username"], "slots": slots}
     if not wanted:
         continue
 
@@ -109,7 +114,9 @@ for repo in repos:
                 continue
             prev = found.get(cid)
             if prev is None or (at or "") > prev["at"]:
-                found[cid] = {"tiktok": wanted[cid], "video": vid, "at": at or ""}
+                found[cid] = {"tiktok": wanted[cid]["tiktok"],
+                              "slots": wanted[cid]["slots"],
+                              "video": vid, "at": at or ""}
 
 print("channels with an upload to identify them:", sorted(found))
 
@@ -148,7 +155,8 @@ for label, info in sorted(found.items(), key=lambda kv: int(re.sub(r"\D", "", kv
     else:
         print(f"  {short}: could not resolve (video {info['video']} unavailable)")
         continue
-    channels.append({"label": short, "id": cid, "tiktok": info["tiktok"]})
+    channels.append({"label": short, "id": cid, "tiktok": info["tiktok"],
+                     "slots": info.get("slots") or []})
 print("resolved:", [c["label"] for c in channels])
 if not channels:
     raise SystemExit("resolved no channels — refusing to publish an empty list")
