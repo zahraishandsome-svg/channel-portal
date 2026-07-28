@@ -49,6 +49,29 @@ def yt(path, **params):
         return json.load(r)
 
 
+TODAY = time.strftime("%Y-%m-%d", time.gmtime())
+today_runs = {}     # channel_id -> [(slot, status), …] for today
+today_up = {}       # channel_id -> uploads recorded today
+
+
+def _today_report(label, info):
+    """What happened to today's uploads for one channel.
+
+    'skipped' is not a miss — it is the per-day guard firing after a slot already
+    succeeded, which is exactly what the retry jobs are supposed to hit."""
+    expected = int(info.get("per_day") or 1)
+    uploaded = today_up.get(label, 0)
+    issues = []
+    for slot, st in sorted(today_runs.get(label, [])):
+        if st == "no_content":
+            issues.append({"slot": slot, "why": "no new video to post"})
+        elif st == "failed":
+            issues.append({"slot": slot, "why": "upload failed"})
+    # a slot that never ran at all is only a miss once its time has passed; the
+    # portal knows the schedule, so just report the raw numbers and let it decide
+    return {"expected": expected, "uploaded": uploaded, "issues": issues}
+
+
 # ── 1. every automation repo ───────────────────────────────────────────────
 repos = []
 page = 1
@@ -82,7 +105,8 @@ for repo in repos:
         times = ch.get("slot_publish_times_utc") or {}
         slots = [str(times[k]).strip() for k in sorted(times)
                  if re.fullmatch(r"\d{1,2}:\d{2}", str(times[k]).strip())]
-        wanted[ch["id"]] = {"tiktok": "@" + ch["tiktok_username"], "slots": slots}
+        wanted[ch["id"]] = {"tiktok": "@" + ch["tiktok_username"], "slots": slots,
+                            "per_day": int(ch.get("videos_per_day") or len(slots) or 1)}
     if not wanted:
         continue
 
@@ -105,6 +129,21 @@ for repo in repos:
                 "SELECT channel_id, youtube_video_id, posted_at FROM posted_videos "
                 "WHERE status='uploaded' AND youtube_video_id IS NOT NULL "
                 "ORDER BY posted_at DESC").fetchall()
+            try:
+                for cid, slot, st in con.execute(
+                        "SELECT channel_id, slot, status FROM runs WHERE run_date=?",
+                        (TODAY,)):
+                    if cid in wanted:
+                        today_runs.setdefault(cid, []).append((slot, st))
+                for cid, cnt in con.execute(
+                        "SELECT channel_id, COUNT(*) FROM posted_videos "
+                        "WHERE status='uploaded' AND youtube_video_id IS NOT NULL "
+                        "AND youtube_video_id != 'already_on_yt' AND posted_at LIKE ? "
+                        "GROUP BY channel_id", (TODAY + "%",)):
+                    if cid in wanted:
+                        today_up[cid] = max(today_up.get(cid, 0), cnt)
+            except Exception as e:
+                print(f"    {f['name']}: no runs/today data ({e})")
             con.close()
         except Exception:
             continue
@@ -116,6 +155,7 @@ for repo in repos:
             if prev is None or (at or "") > prev["at"]:
                 found[cid] = {"tiktok": wanted[cid]["tiktok"],
                               "slots": wanted[cid]["slots"],
+                              "per_day": wanted[cid]["per_day"],
                               "video": vid, "at": at or ""}
 
 print("channels with an upload to identify them:", sorted(found))
@@ -156,7 +196,8 @@ for label, info in sorted(found.items(), key=lambda kv: int(re.sub(r"\D", "", kv
         print(f"  {short}: could not resolve (video {info['video']} unavailable)")
         continue
     channels.append({"label": short, "id": cid, "tiktok": info["tiktok"],
-                     "slots": info.get("slots") or []})
+                     "slots": info.get("slots") or [],
+                     "today": _today_report(label, info)})
 print("resolved:", [c["label"] for c in channels])
 if not channels:
     raise SystemExit("resolved no channels — refusing to publish an empty list")

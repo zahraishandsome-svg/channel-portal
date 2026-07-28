@@ -340,6 +340,23 @@ code{background:#0a0d13;border:1px solid var(--line2);border-radius:5px;padding:
   70%{box-shadow:0 0 0 6px rgba(77,141,255,0)}
   100%{box-shadow:0 0 0 0 rgba(77,141,255,0)}}
 @media(prefers-reduced-motion:reduce){.slot.next .dot{animation:none}}
+/* upload-miss flag + overview scope toggle */
+.miss{display:flex;align-items:flex-start;gap:7px;margin-top:10px;padding:8px 10px;
+  border-radius:10px;background:var(--amber-soft);border:1px solid rgba(242,181,68,.3);
+  font-size:12px;line-height:1.45;color:var(--fg)}
+.miss.bad{background:var(--red-soft);border-color:rgba(242,84,91,.32)}
+.miss .ic{flex-shrink:0;width:15px;height:15px;margin-top:.5px}
+.miss b{font-weight:650}
+.miss .why{color:var(--muted)}
+.scope{display:inline-flex;gap:3px;padding:3px;border-radius:11px;
+  background:var(--raised);border:1px solid var(--line2)}
+.scope button{border:0;background:transparent;color:var(--muted);cursor:pointer;
+  font:inherit;font-size:12.5px;font-weight:550;padding:5px 13px;border-radius:8px;
+  transition:background .14s,color .14s}
+.scope button.on{background:var(--accent);color:#fff;font-weight:600}
+.scope button:not(.on):hover{color:var(--fg);background:var(--raised2)}
+.scope-row{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:16px}
+.scope-note{font-size:11.5px;color:var(--faint)}
 /* safe area — must stay last */
 /* The toolbar is sticky at the very top of the viewport and the web app runs
    edge-to-edge (viewport-fit=cover), so on a notch/Dynamic Island phone its
@@ -682,6 +699,7 @@ async function load(){
   ST={channels,videos,errors,at:new Date()};DEEP={};ANA={};
   writeHist(ST);render();
   probeDead();
+  if(SCOPE==="90"){ loadWindow().then(()=>{ if(!location.hash) overview(); }); }
   beat(errors.length?"err":"ok",(errors.length?errors.length+" issue · ":"")+ST.at.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}));
   b.disabled=false;
 }
@@ -892,12 +910,16 @@ function overview(){
   const {channels,videos,errors}=ST, live=channels.filter(c=>!c.dead);
   $("#crumb").innerHTML=`Overview <span class="dim">· ${live.length} channels</span>`;
 
-  const tSubs=live.reduce((a,c)=>a+c.subs,0), tViews=live.reduce((a,c)=>a+c.views,0);
+  const tSubs=live.reduce((a,c)=>a+c.subs,0);
+  /* views follow the scope; subscribers cannot — YouTube publishes no history */
+  const tViews=live.reduce((a,c)=>a+scopeStats(c).views,0);
   const pSubs=prev?live.reduce((a,c)=>a+(prev.channels?.[c.label]?.subs??c.subs),0):null;
-  const pViews=prev?live.reduce((a,c)=>a+(prev.channels?.[c.label]?.views??c.views),0):null;
+  const pViews=(prev&&SCOPE==="all")
+    ?live.reduce((a,c)=>a+(prev.channels?.[c.label]?.views??c.views),0):null;
   const today=videos.filter(v=>ageD(v.published)<1);
   const best=[...videos.filter(v=>v.views!==null&&ageD(v.published)<2)].sort((a,b)=>b.views-a.views)[0];
-  const ranked=[...channels].sort((a,b)=>a.dead!==b.dead?(a.dead?1:-1):(b.avg??-1)-(a.avg??-1));
+  const rankVal=c=>SCOPE==="all"?(c.avg??-1):(scopeStats(c).avg??-1);
+  const ranked=[...channels].sort((a,b)=>a.dead!==b.dead?(a.dead?1:-1):rankVal(b)-rankVal(a));
   const top=ranked.find(c=>!c.dead&&c.avg!==null)?.label;
   const days=Object.keys(hist.days).sort();
   const totSeries=days.map(d=>Object.values(hist.days[d].channels||{}).reduce((a,x)=>a+(x.views||0),0)).filter(Boolean);
@@ -913,11 +935,15 @@ function overview(){
     ${!SERVED?`<div class="alert i"><b>Running from a file.</b> Launch <b>YT Dashboard</b> from your
       Desktop to enable per-channel API linking (real per-day views, watch time, retention).</div>`:""}
 
+    ${scopeRow()}
     <div class="stats">
       ${statCard("Total subscribers",kf(tSubs),trendEl(tSubs,pSubs)+(prev?` vs ${prev.key}`:" tracking starts today"),
                  totSeries.length>1?spark(days.map(d=>Object.values(hist.days[d].channels||{}).reduce((a,x)=>a+(x.subs||0),0)),240,38):"",0)}
-      ${statCard("Total views",kf(tViews),trendEl(tViews,pViews)+(prev?` vs ${prev.key}`:" tracking starts today"),
-                 totSeries.length>1?spark(totSeries,240,38):"",.04)}
+      ${statCard(SCOPE==="all"?"Total views":"Views · 3 months",kf(tViews),
+                 SCOPE==="all"
+                   ?trendEl(tViews,pViews)+(prev?` vs ${prev.key}`:" tracking starts today")
+                   :(ST.windowReady?"from videos posted in the last 90 days":"counting…"),
+                 totSeries.length>1&&SCOPE==="all"?spark(totSeries,240,38):"",.04)}
       ${statCard("Uploaded today",String(today.length),today.length?[...new Set(today.map(v=>v.channel))].join(", "):"nothing yet","",.08)}
       ${statCard("Best · 48h",best?kf(best.views):"—",best?esc(best.channel+" · "+best.title.slice(0,22)):"no recent uploads","",.12)}
       ${statCard("Channels",`${live.length}<span style="font-size:14px;color:var(--faint)"> / ${channels.length}</span>`,
@@ -940,6 +966,12 @@ function overview(){
 
   wireCommon(overview);
   $("#chseg").querySelectorAll("button").forEach(b=>b.onclick=()=>{FILTER=b.dataset.ch||null;overview();});
+  $("#scope")?.querySelectorAll("button").forEach(b=>b.onclick=async()=>{
+    if(SCOPE===b.dataset.s) return;
+    SCOPE=b.dataset.s; localStorage.setItem(SCOPE_KEY,SCOPE);
+    overview();                       /* paint the switch immediately */
+    if(SCOPE==="90"&&!ST.windowReady){ await loadWindow(); overview(); }
+  });
   $$(".ch[data-go]").forEach(el=>el.onclick=()=>location.hash="#/"+el.dataset.go);
 }
 function statCard(lb,vl,ft,spk,delay){
@@ -976,6 +1008,7 @@ function channelCard(c,prev,top,i,hist){
   else if(c.label===top) badge='<span class="badge b-top">TOP</span>';
   else if(c.avg!==null&&c.avg<LOW_VIEWS) badge='<span class="badge b-low">LOW</span>';
   const ser=Object.keys(hist.days).sort().map(k=>hist.days[k].channels?.[c.label]?.views).filter(v=>v!==undefined);
+  const sc=scopeStats(c);
   return `<div class="ch" data-go="${c.label}" style="animation-delay:${dl}s">
     <div class="ch-top">
       ${c.avatar?`<img class="ch-av" src="${esc(c.avatar)}" alt="" loading="lazy">`:`<span class="ch-av"></span>`}
@@ -984,11 +1017,14 @@ function channelCard(c,prev,top,i,hist){
     <div class="mets">
       <div class="met"><div class="k">Subscribers</div>
         <div class="v">${kf(c.subs)}${p?trendEl(c.subs,p.subs):""}</div></div>
-      <div class="met"><div class="k">Total views</div>
-        <div class="v">${kf(c.views)}${p?trendEl(c.views,p.views):""}</div></div>
-      <div class="met"><div class="k">Videos</div><div class="v">${nf(c.count)}</div></div>
-      <div class="met"><div class="k">Avg · last ${c.rc}</div><div class="v">${c.avg===null?"—":kf(c.avg)}</div></div>
+      <div class="met"><div class="k">${SCOPE==="all"?"Total views":"Views · 3mo"}</div>
+        <div class="v">${kf(sc.views)}${SCOPE==="all"&&p?trendEl(c.views,p.views):""}</div></div>
+      <div class="met"><div class="k">${SCOPE==="all"?"Videos":"Videos · 3mo"}</div>
+        <div class="v">${nf(sc.count)}</div></div>
+      <div class="met"><div class="k">${SCOPE==="all"?`Avg · last ${c.rc}`:"Avg per video"}</div>
+        <div class="v">${sc.avg===null?"—":kf(sc.avg)}</div></div>
     </div>
+    ${missHTML(c)}
     ${schedHTML(c)}
     <div class="ch-foot"><span class="tiny">${linked(c.label)
       ?'<span class="pip g"></span> API linked':'<span class="pip" style="background:var(--faint)"></span> public data'}</span>
@@ -1048,6 +1084,87 @@ function tickSchedules(){
   });
 }
 setInterval(tickSchedules,30000);
+
+/* ══ upload misses ══
+   sync publishes {expected, uploaded, issues[]} per channel for the current UTC day.
+   A slot only counts as missed once its scheduled time has actually passed. */
+function slotsDueToday(slots){
+  if(!slots||!slots.length) return 0;
+  const n=new Date();
+  const mins=n.getUTCHours()*60+n.getUTCMinutes();
+  return slots.filter(s=>{const [h,m]=s.split(":").map(Number); return h*60+m<=mins;}).length;
+}
+function missHTML(c){
+  const t=c.today; if(!t) return "";
+  const due=Math.min(slotsDueToday(c.slots), t.expected||0);
+  const missed=Math.max(0, due-(t.uploaded||0));
+  const issues=t.issues||[];
+  if(!missed && !issues.length) return "";
+  const why=issues.length
+    ? [...new Set(issues.map(i=>i.why))].join(" · ")
+    : "the run did not report a reason";
+  const n=missed||issues.length;
+  const hard=issues.some(i=>i.why==="upload failed");
+  return `<div class="miss ${hard?"bad":""}">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
+      <path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/></svg>
+    <div><b>${n} video${n>1?"s":""} missed today</b>
+      <span class="why">&nbsp;— ${esc(why)}</span></div></div>`;
+}
+
+/* ══ overview scope ══
+   Lifetime totals hide how a channel is doing now, so the default is the last 90
+   days. Only views/videos/average can be scoped: subscriber counts have no public
+   history, so they stay lifetime whichever scope is picked. */
+const SCOPE_KEY="yt_dash_scope";
+let SCOPE=localStorage.getItem(SCOPE_KEY)||"90";
+const SCOPE_DAYS=90;
+function inScope(v){ return SCOPE==="all" || ageD(v.published)<=SCOPE_DAYS; }
+function scopeStats(c){
+  if(SCOPE==="all") return {views:c.views, count:c.count, avg:c.avg, exact:true};
+  const mine=(ST.window||[]).filter(v=>v.channel===c.label&&v.views!==null&&inScope(v));
+  if(!mine.length) return {views:0,count:0,avg:null,exact:!!ST.windowReady};
+  const sum=mine.reduce((a,v)=>a+v.views,0);
+  return {views:sum, count:mine.length, avg:Math.round(sum/mine.length),
+          exact:!!ST.windowReady};
+}
+function scopeRow(){
+  return `<div class="scope-row">
+    <div class="scope" id="scope">
+      <button data-s="90" class="${SCOPE==="90"?"on":""}">Last 3 months</button>
+      <button data-s="all" class="${SCOPE==="all"?"on":""}">Lifetime</button>
+    </div>
+    <span class="scope-note">${SCOPE==="90"
+      ? "Views of videos published in the last 90 days"
+      : "Everything since the channel started"}</span></div>`;
+}
+/* Pull enough uploads per channel to cover the window. The overview normally fetches
+   only the newest handful, which is nowhere near 90 days at two videos a day. */
+async function loadWindow(){
+  if(ST.windowReady) return;
+  const cut=Date.now()-SCOPE_DAYS*864e5;
+  const live=ST.channels.filter(c=>!c.dead&&c.uploads);
+  const per=await Promise.all(live.map(async c=>{
+    const out=[]; let tok, pages=0;
+    try{
+      do{
+        const r=await api("playlistItems",{part:"snippet",playlistId:c.uploads,
+          maxResults:"50",...(tok?{pageToken:tok}:{})});
+        for(const i of r.items||[]){
+          out.push({channel:c.label,id:i.snippet.resourceId.videoId,
+            title:i.snippet.title,published:i.snippet.publishedAt});
+        }
+        tok=r.nextPageToken;
+        if(out.length&&new Date(out[out.length-1].published).getTime()<cut) break;
+      }while(tok&&++pages<8);
+    }catch{}
+    return out;
+  }));
+  const all=per.flat().filter(v=>new Date(v.published).getTime()>=cut);
+  let s={}; try{ s=await vidStats(all.map(v=>v.id)); }catch{}
+  all.forEach(v=>deco(v,s));
+  ST.window=all; ST.windowReady=true;
+}
 
 function table(rows,prev,maxPD,best,showCh){
   const cols=[...(showCh?[["channel","Channel",""]]:[]),["title","Video",""],["published","Age",""],
