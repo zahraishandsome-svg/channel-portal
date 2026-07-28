@@ -357,6 +357,18 @@ code{background:#0a0d13;border:1px solid var(--line2);border-radius:5px;padding:
 .scope button:not(.on):hover{color:var(--fg);background:var(--raised2)}
 .scope-row{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:16px}
 .scope-note{font-size:11.5px;color:var(--faint)}
+/* owning Google account */
+.mail{display:inline-flex;align-items:center;gap:5px;margin-top:5px;max-width:100%;
+  padding:2.5px 8px 2.5px 6px;border-radius:7px;background:var(--raised2);
+  border:1px solid var(--line2);font-size:11px;color:var(--muted);
+  cursor:pointer;transition:border-color .14s,color .14s,background .14s}
+.mail:hover{border-color:var(--accent-line);color:var(--fg);background:var(--accent-soft)}
+.mail:active{transform:translateY(.5px)}
+.mail .ic{width:12px;height:12px;flex-shrink:0;opacity:.75}
+.mail .adr{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mail.none{cursor:default;border-style:dashed;color:var(--faint)}
+.mail.none:hover{border-color:var(--line2);color:var(--faint);background:var(--raised2)}
+.mail.done{border-color:var(--green);color:var(--green)}
 /* safe area — must stay last */
 /* The toolbar is sticky at the very top of the viewport and the web app runs
    edge-to-edge (viewport-fit=cover), so on a notch/Dynamic Island phone its
@@ -966,6 +978,7 @@ function overview(){
     <div class="note">${foot(hist,prev)}</div>`;
 
   wireCommon(overview);
+  wireMail();
   $("#chseg").querySelectorAll("button").forEach(b=>b.onclick=()=>{FILTER=b.dataset.ch||null;overview();});
   $("#scope")?.querySelectorAll("button").forEach(b=>b.onclick=async()=>{
     if(SCOPE===b.dataset.s) return;
@@ -1014,7 +1027,8 @@ function channelCard(c,prev,top,i,hist){
     <div class="ch-top">
       ${c.avatar?`<img class="ch-av" src="${esc(c.avatar)}" alt="" loading="lazy">`:`<span class="ch-av"></span>`}
       <div class="ch-id"><div class="ch-nm">${esc(c.title)}</div>
-        <div class="ch-hd">${c.label} · ${esc(c.tiktok)}</div></div>${badge}</div>
+        <div class="ch-hd">${c.label} · ${esc(c.tiktok)}</div>
+        ${mailHTML(c)}</div>${badge}</div>
     <div class="mets">
       <div class="met"><div class="k">Subscribers</div>
         <div class="v">${kf(c.subs)}${p?trendEl(c.subs,p.subs):""}</div></div>
@@ -1137,10 +1151,10 @@ function missHTML(c){
    A deployed fix is worthless if the page never re-runs. The build stamps its id here
    and publishes the same id in version.json; when the app returns to the foreground it
    compares the two and reloads once if the deploy moved on. */
-const BUILD_ID="41d50490eff8";
+const BUILD_ID="dc8200e7ccef";
 let updateChecking=false;
 async function checkForUpdate(){
-  if(!SERVED||BUILD_ID==="41d50490eff8"||updateChecking) return;
+  if(!SERVED||BUILD_ID==="dc8200e7ccef"||updateChecking) return;
   updateChecking=true;
   try{
     const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"});
@@ -1208,6 +1222,36 @@ async function loadWindow(){
   let s={}; try{ s=await vidStats(all.map(v=>v.id)); }catch{}
   all.forEach(v=>deco(v,s));
   ST.window=all; ST.windowReady=true;
+}
+
+/* ══ owning account ══
+   Which Gmail a channel lives under is not derivable from anything on screen, and it is
+   what you need when signing in on a phone. Tap to copy. */
+function mailHTML(c){
+  const e=(c.email||"").trim();
+  if(!e) return `<div class="mail none" title="Add owner_email to this channel's channels.yaml">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="2" y="4" width="20" height="16" rx="2.5"/><path d="M2.5 7l9.5 6.5L21.5 7"/></svg>
+    <span class="adr">email not recorded</span></div>`;
+  return `<div class="mail" data-mail="${esc(e)}" title="Tap to copy">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="2" y="4" width="20" height="16" rx="2.5"/><path d="M2.5 7l9.5 6.5L21.5 7"/></svg>
+    <span class="adr">${esc(e)}</span></div>`;
+}
+function wireMail(){
+  $$(".mail[data-mail]").forEach(el=>{
+    el.onclick=async ev=>{
+      ev.stopPropagation();                 /* the card itself is a link */
+      const v=el.dataset.mail;
+      try{ await navigator.clipboard.writeText(v); }
+      catch{ const t=document.createElement("textarea"); t.value=v;
+             document.body.appendChild(t); t.select();
+             try{document.execCommand("copy");}catch{} t.remove(); }
+      const s=el.querySelector(".adr"), was=s.textContent;
+      el.classList.add("done"); s.textContent="Copied";
+      setTimeout(()=>{ el.classList.remove("done"); s.textContent=was; },1200);
+    };
+  });
 }
 
 function table(rows,prev,maxPD,best,showCh){
@@ -1288,7 +1332,8 @@ async function channelPage(label){
           <div style="font-size:19px;font-weight:650;letter-spacing:-.4px">${esc(c.title||label)}</div>
           <div style="font-size:12px;color:var(--faint)">${label} · ${esc(c.tiktok)} ·
             <a href="https://www.youtube.com/channel/${c.id}" target="_blank" rel="noopener"
-               style="color:var(--accent)">YouTube ↗</a></div></div>
+               style="color:var(--accent)">YouTube ↗</a></div>
+          ${mailHTML(c)}</div>
         <button class="btn ${linked(label)?"":"pri"}" id="lk">${linked(label)?"● API linked":"Link API"}</button>
       </div>
 
@@ -1350,6 +1395,7 @@ async function channelPage(label){
     if(cf)cf.onchange=e=>{RANGE.from=e.target.value;draw();};
     if(ct)ct.onchange=e=>{RANGE.to=e.target.value;draw();};
     wireCommon(draw);
+    wireMail();
   };
   draw();
 }

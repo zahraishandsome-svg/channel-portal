@@ -106,7 +106,10 @@ for repo in repos:
         slots = [str(times[k]).strip() for k in sorted(times)
                  if re.fullmatch(r"\d{1,2}:\d{2}", str(times[k]).strip())]
         wanted[ch["id"]] = {"tiktok": "@" + ch["tiktok_username"], "slots": slots,
-                            "per_day": int(ch.get("videos_per_day") or len(slots) or 1)}
+                            "per_day": int(ch.get("videos_per_day") or len(slots) or 1),
+                            # which Google account owns the channel — encrypted like the
+                            # rest of the list, so the public repo still reveals nothing
+                            "email": (ch.get("owner_email") or "").strip()}
     if not wanted:
         continue
 
@@ -156,6 +159,7 @@ for repo in repos:
                 found[cid] = {"tiktok": wanted[cid]["tiktok"],
                               "slots": wanted[cid]["slots"],
                               "per_day": wanted[cid]["per_day"],
+                              "email": wanted[cid]["email"],
                               "video": vid, "at": at or ""}
 
 print("channels with an upload to identify them:", sorted(found))
@@ -197,6 +201,7 @@ for label, info in sorted(found.items(), key=lambda kv: int(re.sub(r"\D", "", kv
         continue
     channels.append({"label": short, "id": cid, "tiktok": info["tiktok"],
                      "slots": info.get("slots") or [],
+                     "email": info.get("email") or "",
                      "today": _today_report(label, info)})
 print("resolved:", [c["label"] for c in channels])
 if not channels:
