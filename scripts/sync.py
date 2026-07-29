@@ -61,12 +61,25 @@ def _today_report(label, info):
     succeeded, which is exactly what the retry jobs are supposed to hit."""
     expected = int(info.get("per_day") or 1)
     uploaded = today_up.get(label, 0)
-    issues = []
-    for slot, st in sorted(today_runs.get(label, [])):
+    rows = today_runs.get(label, [])
+
+    # A slot gets several attempts a day: the scheduled run, then a retry 90 minutes
+    # later from a fresh IP. Only the outcome of the slot as a whole matters — if any
+    # attempt uploaded, the earlier no_content/failed was recovered and is not an issue.
+    # Without this ch8 read "1 video missed" on a day it posted both videos, because its
+    # 09:00 run found nothing and the 10:30 retry succeeded.
+    succeeded = {slot for slot, st in rows if st == "success"}
+
+    issues, seen = [], set()
+    for slot, st in sorted(rows):
+        if slot in succeeded or slot in seen:
+            continue
         if st == "no_content":
             issues.append({"slot": slot, "why": "no new video to post"})
+            seen.add(slot)
         elif st == "failed":
             issues.append({"slot": slot, "why": "upload failed"})
+            seen.add(slot)
     # a slot that never ran at all is only a miss once its time has passed; the
     # portal knows the schedule, so just report the raw numbers and let it decide
     return {"expected": expected, "uploaded": uploaded, "issues": issues}
