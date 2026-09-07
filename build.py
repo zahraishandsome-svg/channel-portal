@@ -16,6 +16,7 @@ What the build changes:
 Every edit asserts a unique anchor, so a drifted source fails the build instead of
 silently producing a half-patched page.
 """
+import re
 from pathlib import Path
 
 SRC = Path(r"C:\Users\Zahid\YT-Dashboard\dashboard.html")
@@ -63,8 +64,11 @@ const MODE = location.port==="8756" ? "local"
 const SERVED = MODE!=="file";""", "MODE")
 
 # ── nothing identifying is published ──────────────────────────────────────
-t = sub(t, 'const DEFAULT_KEY="AIzaSyDsr2ptOEQbGSvOnTJKN32rceEpS8ZnOIU";',
-           'const DEFAULT_KEY="";', "default key")
+# The local dashboard carries a developer API key; the published build must not.
+# Match the line by shape, so this file never has to contain the key — it lives
+# in a public repo.
+t, _n = re.subn(r'const DEFAULT_KEY="AIza[\w-]*";', 'const DEFAULT_KEY="";', t)
+assert _n == 1, "anchor missing: default key"
 a = t.index("const CHANNELS=[")
 t = t[:a] + "let CHANNELS=[];" + t[t.index("];", a) + 2:]
 
