@@ -287,6 +287,59 @@ code{background:#0a0d13;border:1px solid var(--line2);border-radius:5px;padding:
   font-size:12.5px;box-shadow:0 12px 34px -12px #000;animation:fadeUp .24s both;max-width:330px}
 .toast.g{border-color:rgba(62,207,142,.35)} .toast.r{border-color:rgba(242,84,91,.4)}
 
+.empty{padding:34px 18px;text-align:center;color:var(--muted);font-size:14px;line-height:1.7;
+  border:1px dashed var(--line2);border-radius:var(--radius);background:var(--surface)}
+
+/* rows used by the Channels and Search tabs */
+.ch-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+  padding:11px 13px;min-height:60px;                 /* Fitts: easy thumb target */
+  background:var(--raised);border:1px solid var(--line);border-radius:var(--radius);
+  color:var(--fg);cursor:pointer;font:inherit;-webkit-tap-highlight-color:transparent}
+.ch-row:active{background:var(--raised2)}
+.ch-row .ch-av{width:38px;height:38px;border-radius:99px;flex:none;
+  background:var(--line2);object-fit:cover}
+.ch-row .ch-txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.ch-row .ch-nm{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ch-row .ch-sub{font-size:11.5px;color:var(--muted)}
+#schIn{width:100%;padding:13px 15px;font-size:16px;   /* 16px stops iOS zooming in */
+  background:var(--raised);border:1px solid var(--line2);border-radius:12px;color:var(--fg)}
+#schIn:focus{outline:none;border-color:var(--accent-line)}
+
+/* ══ bottom tab bar ══ */
+.tabbar{display:none}
+@media(max-width:1000px){
+  .tabbar{
+    display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;
+    background:rgba(15,17,22,.92);backdrop-filter:blur(14px);
+    border-top:1px solid var(--line2);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  .tab{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:3px;padding:9px 0 7px;min-height:52px;
+    background:none;border:0;color:var(--faint);cursor:pointer;
+    font:600 10.5px/1 inherit;letter-spacing:.02em;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .tab .ic{width:23px;height:23px;stroke-width:1.9}
+  .tab.on{color:var(--accent)}
+  .tab:active{opacity:.55}
+  /* clear the bar (and the home indicator) so nothing sits under it */
+  .page{padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  .toasts{bottom:calc(76px + env(safe-area-inset-bottom,0px));right:12px;left:12px}
+  .toast{max-width:none}
+  .hamb{display:none!important}   /* the tab bar replaces the drawer */
+}
+/* pull-to-refresh */
+.ptr{position:fixed;left:0;right:0;top:0;z-index:70;display:flex;justify-content:center;
+  pointer-events:none;transition:transform .2s;transform:translateY(-60px)}
+.ptr .ring{margin-top:calc(10px + env(safe-area-inset-top,0px));width:30px;height:30px;
+  border-radius:99px;background:var(--raised);border:1px solid var(--line3);
+  display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow)}
+.ptr .ring svg{width:16px;height:16px;color:var(--accent)}
+.ptr.spin .ring svg{animation:ptrspin .8s linear infinite}
+@keyframes ptrspin{to{transform:rotate(360deg)}}
+
 /* ══ responsive ══ */
 @media(max-width:1000px){
   :root{--sb:0px}
@@ -443,6 +496,31 @@ code{background:#0a0d13;border:1px solid var(--line2);border-radius:5px;padding:
     <div class="page" id="page"></div>
   </div>
 </div>
+<div class="ptr" id="ptr"><div class="ring">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+    <path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+</div></div>
+
+<nav class="tabbar" id="tabbar">
+  <button class="tab" data-tab="" aria-label="Home">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></svg>
+    <span>Home</span></button>
+  <button class="tab" data-tab="channels" aria-label="Channels">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="m10 9.5 5 2.5-5 2.5z"/></svg>
+    <span>Channels</span></button>
+  <button class="tab" data-tab="search" aria-label="Search">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round">
+      <circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+    <span>Search</span></button>
+  <button class="tab" data-tab="setup" aria-label="Settings">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3.2"/>
+      <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
+    <span>Settings</span></button>
+</nav>
+
 <div id="modalHost"></div>
 <div class="toasts" id="toasts"></div>
 
@@ -1156,10 +1234,10 @@ function missHTML(c){
    A deployed fix is worthless if the page never re-runs. The build stamps its id here
    and publishes the same id in version.json; when the app returns to the foreground it
    compares the two and reloads once if the deploy moved on. */
-const BUILD_ID="3d8c205142fb";
+const BUILD_ID="8a6e49ad6f7b";
 let updateChecking=false;
 async function checkForUpdate(){
-  if(!SERVED||BUILD_ID==="3d8c205142fb"||updateChecking) return;
+  if(!SERVED||BUILD_ID==="8a6e49ad6f7b"||updateChecking) return;
   updateChecking=true;
   try{
     const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"});
@@ -1578,10 +1656,103 @@ function palette(){
   $("#pal").onclick=e=>{if(e.target.id==="pal")closeModal();};
 }
 
+/* ══ channels tab ══
+   The channel list used to live only inside the drawer, so on a phone the app's
+   main content was one tap out of sight. It is a screen of its own now. */
+function channelsPage(){
+  $("#crumb").innerHTML=`Channels <span class="dim">· ${ST.channels.filter(c=>!c.dead).length} live</span>`;
+  const ranked=[...ST.channels].sort((a,b)=>
+    a.dead!==b.dead?(a.dead?1:-1):(b.views??-1)-(a.views??-1));
+  if(!ranked.length){
+    $("#page").innerHTML=`<div class="empty">Abhi koi channel nahi hai.<br>
+      <span class="dim">Settings mein apna setup link paste karein.</span></div>`;
+    return;
+  }
+  $("#page").innerHTML=`<div class="cards">${
+    ranked.map(c=>{
+      const pip=c.dead?(c.probe?.status==="indexing"?"a":"r"):(c.avg!==null&&c.avg<LOW_VIEWS?"a":"g");
+      return `<button class="ch-row" data-go="${esc(c.label)}">
+        ${c.avatar?`<img class="ch-av" src="${esc(c.avatar)}" alt="" loading="lazy">`:`<span class="ch-av"></span>`}
+        <span class="ch-txt">
+          <span class="ch-nm">${esc(c.title||c.label)}</span>
+          <span class="ch-sub">${c.dead?"offline":`${kf(c.subs)} subs · ${kf(c.views)} views`}</span>
+        </span>
+        <span class="pip ${pip}"></span>
+      </button>`;}).join("")}</div>`;
+  $$("#page .ch-row").forEach(el=>el.onclick=()=>{location.hash="#/"+el.dataset.go;});
+}
+
+/* ══ search tab ══
+   Same job as the Ctrl+K palette, but as a real screen — a keyboard shortcut is
+   invisible on a phone. */
+function searchPage(){
+  $("#crumb").textContent="Search";
+  $("#page").innerHTML=`
+    <input id="schIn" class="in" type="search" placeholder="Channel dhoondein…"
+           autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div id="schOut" class="cards" style="margin-top:14px"></div>`;
+  const out=$("#schOut"), inp=$("#schIn");
+  const draw=q=>{
+    const hits=ST.channels.filter(c=>
+      (c.title||c.label).toLowerCase().includes(q)||
+      (c.tiktok||"").toLowerCase().includes(q)||
+      c.label.toLowerCase().includes(q));
+    out.innerHTML=hits.length?hits.map(c=>`
+      <button class="ch-row" data-go="${esc(c.label)}">
+        ${c.avatar?`<img class="ch-av" src="${esc(c.avatar)}" alt="" loading="lazy">`:`<span class="ch-av"></span>`}
+        <span class="ch-txt"><span class="ch-nm">${esc(c.title||c.label)}</span>
+        <span class="ch-sub">${esc(c.tiktok||c.label)}</span></span>
+      </button>`).join(""):`<div class="empty">Kuch nahi mila</div>`;
+    $$("#schOut .ch-row").forEach(el=>el.onclick=()=>{location.hash="#/"+el.dataset.go;});
+  };
+  draw("");
+  inp.oninput=()=>draw(inp.value.trim().toLowerCase());
+  inp.focus();
+}
+
+/* ══ tab bar ══ */
+function tabs(){
+  const r=route();
+  const cur = r==="channels"||r==="search"||r==="setup" ? r
+            : (r ? "channels" : "");   /* a channel page belongs under Channels */
+  $$("#tabbar .tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===cur));
+}
+$$("#tabbar .tab").forEach(b=>b.onclick=()=>{
+  const to=b.dataset.tab;
+  if(route()===to) scrollTo({top:0,behavior:"smooth"});
+  location.hash=to?"#/"+to:"";
+});
+
+/* ══ pull-to-refresh ══ */
+(()=>{
+  const el=$("#ptr"); let y0=null,pulling=false,dist=0;
+  addEventListener("touchstart",e=>{
+    if(scrollY>0||e.touches.length!==1) return;
+    y0=e.touches[0].clientY; pulling=true; dist=0;
+  },{passive:true});
+  addEventListener("touchmove",e=>{
+    if(!pulling||y0===null) return;
+    dist=Math.max(0,e.touches[0].clientY-y0);
+    el.style.transform=`translateY(${Math.min(dist*.55,72)-60}px)`;
+  },{passive:true});
+  addEventListener("touchend",()=>{
+    if(!pulling) return;
+    pulling=false;
+    if(dist>=110){
+      el.classList.add("spin"); el.style.transform="translateY(6px)";
+      Promise.resolve(load()).finally(()=>{
+        el.classList.remove("spin"); el.style.transform="translateY(-60px)"; });
+    } else el.style.transform="translateY(-60px)";
+    y0=null; dist=0;
+  },{passive:true});
+})();
+
 function render(){
-  sidebar();
+  sidebar(); tabs();
   const r=route();
   if(r==="setup"){overview();openSetup(null);return;}
+  if(r==="channels"){channelsPage();return;}
+  if(r==="search"){searchPage();return;}
   if(r&&ST.channels.some(c=>c.label===r))channelPage(r); else overview();
 }
 addEventListener("hashchange",()=>{Q="";render();scrollTo({top:0});});
@@ -1595,6 +1766,7 @@ $("#scrim2").onclick=closeSb;
 $("#cmd").onclick=palette;
 $("#setup").onclick=()=>openSetup(null);
 $("#refresh").onclick=load;
+tabs();
 load();
 if(MODE==="hosted"&&"serviceWorker" in navigator)
   addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
